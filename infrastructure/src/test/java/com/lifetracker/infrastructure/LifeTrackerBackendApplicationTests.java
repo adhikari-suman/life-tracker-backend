@@ -1,4 +1,4 @@
-package com.lifetracker.life_tracker_backend;
+package com.lifetracker.infrastructure;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

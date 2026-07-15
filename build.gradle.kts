@@ -1,38 +1,22 @@
-plugins {
-	java
-	id("org.springframework.boot") version "4.1.0"
-	id("io.spring.dependency-management") version "1.1.7"
+// Root is an aggregator only — no plugins, no artifact of its own.
+// Each module owns its own plugins and dependencies.
+
+allprojects {
+	group = "com.lifetracker"
+	version = "0.0.1-SNAPSHOT"
 }
 
-group = "com.lifetracker"
-version = "0.0.1-SNAPSHOT"
-
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
+// Shared Java configuration for the JVM modules. Guarded on the Java plugin so the
+// migrations module (Liquibase-only, no `java` plugin) is left untouched.
+subprojects {
+	plugins.withType<JavaPlugin> {
+		extensions.configure<JavaPluginExtension> {
+			toolchain {
+				languageVersion = JavaLanguageVersion.of(25)
+			}
+		}
+		tasks.withType<Test> {
+			useJUnitPlatform()
+		}
 	}
-}
-
-repositories {
-	mavenCentral()
-}
-
-dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-actuator")
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-liquibase")
-	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	runtimeOnly("org.postgresql:postgresql")
-	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-liquibase-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-	testImplementation("org.springframework.boot:spring-boot-testcontainers")
-	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
-	testImplementation("org.testcontainers:testcontainers-postgresql")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.withType<Test> {
-	useJUnitPlatform()
 }

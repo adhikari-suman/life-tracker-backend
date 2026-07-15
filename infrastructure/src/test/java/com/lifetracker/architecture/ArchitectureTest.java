@@ -28,6 +28,10 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule layers_are_respected = layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
+            // Domain and Application are still empty while the codebase is greenfield.
+            // Tolerate empty layers so the boundary check stays green until code lands;
+            // the access rules below still fire the moment a layer has classes.
+            .withOptionalLayers(true)
             .layer("Domain").definedBy("com.lifetracker.domain..")
             .layer("Application").definedBy("com.lifetracker.application..")
             .layer("Infrastructure").definedBy("com.lifetracker.infrastructure..")

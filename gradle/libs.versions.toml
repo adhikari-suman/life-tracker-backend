@@ -1,0 +1,33 @@
+[versions]
+springBoot = "4.1.0"
+springDependencyManagement = "1.1.7"
+archunit = "1.4.2"
+liquibaseGradle = "3.1.0"
+# Not BOM-managed (the migrations module has no Spring BOM), so pinned explicitly.
+# postgresql + liquibase are aligned with the Spring Boot 4.1.0 platform.
+liquibase = "4.33.0"
+postgresql = "42.7.7"
+picocli = "4.7.7"
+
+[libraries]
+# Spring Boot starters — versions supplied by the Boot BOM via io.spring.dependency-management.
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
+spring-boot-starter-actuator-test = { module = "org.springframework.boot:spring-boot-starter-actuator-test" }
+spring-boot-starter-data-jpa-test = { module = "org.springframework.boot:spring-boot-starter-data-jpa-test" }
+spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+# Explicitly versioned.
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+liquibase-core = { module = "org.liquibase:liquibase-core", version.ref = "liquibase" }
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
+liquibase = { id = "org.liquibase.gradle", version.ref = "liquibaseGradle" }

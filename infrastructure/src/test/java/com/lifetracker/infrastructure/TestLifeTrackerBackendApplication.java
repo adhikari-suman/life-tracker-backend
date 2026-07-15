@@ -1,4 +1,4 @@
-package com.lifetracker.life_tracker_backend;
+package com.lifetracker.infrastructure;
 
 import org.springframework.boot.SpringApplication;
 
