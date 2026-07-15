@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 000-baseline
+      author: adhikari-suman
+      changes:
+        - tagDatabase:
+            tag: baseline
