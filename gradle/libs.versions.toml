@@ -8,6 +8,9 @@ liquibaseGradle = "3.1.0"
 liquibase = "4.33.0"
 postgresql = "42.7.7"
 picocli = "4.7.7"
+# :domain has no Spring BOM to supply a version, so JUnit is pinned here. Kept equal to what
+# the Boot 4.1.0 BOM resolves in :infrastructure, so both modules use the same JUnit.
+junit = "6.0.3"
 
 [libraries]
 # Spring Boot starters — versions supplied by the Boot BOM via io.spring.dependency-management.
@@ -20,8 +23,9 @@ spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-bo
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
 # Explicitly versioned.
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 liquibase-core = { module = "org.liquibase:liquibase-core", version.ref = "liquibase" }
