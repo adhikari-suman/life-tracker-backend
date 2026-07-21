@@ -1,0 +1,69 @@
+# Hand-written to match SessionEntity (code-first, ADR-0009). Grants to lifetracker_app deferred
+# (see 001). A session belongs to a user; the FK cascades so a deleted user's sessions go with it.
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-sessions
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: sessions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_sessions
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: refresh_token_hash
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: device_label
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_used_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_sessions_user
+            baseTableName: sessions
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_sessions_user_id
+            tableName: sessions
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropTable:
+            tableName: sessions
