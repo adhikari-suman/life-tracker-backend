@@ -12,8 +12,6 @@ import com.lifetracker.domain.user.UserId;
 import com.lifetracker.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -27,9 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * register -> persist -> authenticate works and that a real Argon2id hash is stored, never the
  * plaintext. Each test uses a distinct email, so methods do not interfere.
  */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
-class AuthPersistenceIntegrationTest {
+class AuthPersistenceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     RegisterUser registerUser;

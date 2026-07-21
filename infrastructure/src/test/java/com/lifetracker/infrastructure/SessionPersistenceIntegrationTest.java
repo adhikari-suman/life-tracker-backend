@@ -9,8 +9,6 @@ import com.lifetracker.domain.session.SessionRepository;
 import com.lifetracker.domain.user.UserId;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 
 import java.time.Instant;
 
@@ -23,9 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * — it proves {@code SessionEntity} matches the 002-create-sessions migration. A Session requires a
  * User to exist (the FK), so each test registers one first.
  */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
-class SessionPersistenceIntegrationTest {
+class SessionPersistenceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     RegisterUser registerUser;

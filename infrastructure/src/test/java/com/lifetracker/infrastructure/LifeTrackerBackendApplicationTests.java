@@ -1,12 +1,8 @@
 package com.lifetracker.infrastructure;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
-class LifeTrackerBackendApplicationTests {
+class LifeTrackerBackendApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {

@@ -1,19 +1,33 @@
 package com.lifetracker.infrastructure.config;
 
+import com.lifetracker.application.session.OpenSession;
+import com.lifetracker.application.session.RevokeAllSessions;
+import com.lifetracker.application.session.RevokeSession;
+import com.lifetracker.application.session.RotateSession;
 import com.lifetracker.application.user.Authenticate;
 import com.lifetracker.application.user.RegisterUser;
+import com.lifetracker.domain.session.AccessTokens;
+import com.lifetracker.domain.session.RefreshTokens;
+import com.lifetracker.domain.session.SessionRepository;
 import com.lifetracker.domain.user.PasswordHasher;
 import com.lifetracker.domain.user.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
+
 /**
  * Wires the plain-Java use cases as Spring beans. The use cases carry no Spring annotations — the
  * application module has no Spring on its classpath — so infrastructure constructs them here from
- * the port beans ({@code JpaUserRepository}, {@code Argon2idPasswordHasher}).
+ * the port beans (the JPA repositories, the Argon2 hasher, the RS256 / SHA-256 token adapters).
  */
 @Configuration
 class UseCaseConfiguration {
+
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
+    }
 
     @Bean
     RegisterUser registerUser(UserRepository users, PasswordHasher passwordHasher) {
@@ -23,5 +37,27 @@ class UseCaseConfiguration {
     @Bean
     Authenticate authenticate(UserRepository users, PasswordHasher passwordHasher) {
         return new Authenticate(users, passwordHasher);
+    }
+
+    @Bean
+    OpenSession openSession(SessionRepository sessions, RefreshTokens refreshTokens,
+                            AccessTokens accessTokens, Clock clock) {
+        return new OpenSession(sessions, refreshTokens, accessTokens, clock);
+    }
+
+    @Bean
+    RotateSession rotateSession(SessionRepository sessions, RefreshTokens refreshTokens,
+                                AccessTokens accessTokens, Clock clock) {
+        return new RotateSession(sessions, refreshTokens, accessTokens, clock);
+    }
+
+    @Bean
+    RevokeSession revokeSession(SessionRepository sessions) {
+        return new RevokeSession(sessions);
+    }
+
+    @Bean
+    RevokeAllSessions revokeAllSessions(SessionRepository sessions) {
+        return new RevokeAllSessions(sessions);
     }
 }
