@@ -24,11 +24,18 @@ precision, partial indexes.
   pre-inversion `infrastructure/CLAUDE.md`). We flipped the authority so the entity is the design
   surface, which is the preferred workflow here. Mechanically the two are near-identical under
   `validate`; the difference is which artifact you edit first.
-- **Auto-generated migrations via the `liquibase-hibernate` diff.** Deferred, not rejected: on
-  brand-new Spring Boot 4.1 / Hibernate 7 the extension's compatibility is unverified, and a
-  generated changeset still needs hand-finishing for grants, rollback and author. For now each
-  changeset is hand-written to match the entity; the diff tooling can be added when the payoff
-  grows.
+- **Auto-generated migrations via the `liquibase-hibernate` diff.** Tried and rejected. The
+  `liquibase-hibernate7:5.0.3` extension *does* run against Hibernate 7.4.1, but its snapshot emits
+  `char(36)` for a `UUID` primary key — a long-standing liquibase-hibernate limitation
+  ([issue #705](https://github.com/liquibase/liquibase-hibernate/issues/705)), present on Hibernate
+  6 and 7 alike, and *not* overridable via `columnDefinition` on the `@Id` (it is honoured for
+  other columns, e.g. `timestamptz`, but the identifier column re-derives its type from the Java
+  type). An applied `char(36)` id then fails `ddl-auto: validate` against the native `uuid` the app
+  maps to, so a generated changeset is self-inconsistent with the runtime. Making it work would
+  need a per-run `char(36)`→`uuid` normalization step — not worth it. Each changeset is instead
+  hand-written to match the entity and proven consistent at boot. (Downgrading to Spring Boot 3.x
+  would not help: same `char(36)` limitation, at the cost of Hibernate 6, Jackson 2, and likely
+  Java 21.)
 
 ## Consequences
 
