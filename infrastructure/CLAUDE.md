@@ -8,10 +8,15 @@ Everything that touches the outside world. The Spring Boot main class lives here
 
 ## Persistence
 
-- `PurchaseEntity` mirrors the TABLE, not the domain class. Columns, not concepts. When the
-  two want to diverge — a `version` column, a soft-delete flag, a denormalized
-  `merchant_name` — the entity changes and `Purchase` does not. That divergence is the
-  reason the second class exists.
+- **The entity defines the table (code-first).** The `@Entity` is the design surface for its
+  table: you shape the columns on the entity, and the Liquibase changeset is written to match
+  it — the DB follows the code. Liquibase still *drives* migrations (it applies them, versioned
+  and reversible, as a job before the app); `ddl-auto` stays `validate`, so if an entity and its
+  migration ever drift, the app refuses to boot in the Testcontainers test. See ADR-0009.
+- **The entity is still not the domain class.** `UserEntity` holds columns, the domain `User`
+  holds concepts, and they diverge on purpose — a `version` column, a soft-delete flag, a
+  denormalized `merchant_name` live on the entity and never touch `User`. That divergence is why
+  the second class exists. A mapper (plain static methods) converts between them.
 - `@Entity` classes are package-private wherever possible. Nothing outside
   `infrastructure/persistence` may reference one.
 - `JpaPurchaseRepository implements PurchaseRepository` — the port from `domain`. A Spring

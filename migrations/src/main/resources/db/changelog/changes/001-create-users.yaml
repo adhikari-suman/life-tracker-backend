@@ -1,0 +1,45 @@
+# Hand-written to match UserEntity (code-first, ADR-0009). Grants to lifetracker_app are
+# deliberately deferred: that role is not provisioned yet, and the Testcontainers superuser
+# needs none. When the app role lands, its GRANTs go in the SAME changeset that adds a table.
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_users
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_users_email
+              - column:
+                  name: password_hash
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email_verified
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: users

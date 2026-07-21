@@ -8,6 +8,8 @@ liquibaseGradle = "3.1.0"
 liquibase = "4.33.0"
 postgresql = "42.7.7"
 picocli = "4.7.7"
+# Not managed by the Spring Boot BOM; Argon2 (via spring-security-crypto) needs it at runtime.
+bouncycastle = "1.78.1"
 # :domain has no Spring BOM to supply a version, so JUnit is pinned here. Kept equal to what
 # the Boot 4.1.0 BOM resolves in :infrastructure, so both modules use the same JUnit.
 junit = "6.0.3"
@@ -20,7 +22,13 @@ spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-st
 spring-boot-starter-actuator-test = { module = "org.springframework.boot:spring-boot-starter-actuator-test" }
 spring-boot-starter-data-jpa-test = { module = "org.springframework.boot:spring-boot-starter-data-jpa-test" }
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
+# Security / crypto (Argon2id). Versions supplied by the Boot BOM.
+spring-security-crypto = { module = "org.springframework.security:spring-security-crypto" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+# Spring Boot's Liquibase auto-configuration (Boot 4 modular autoconfig). Brings liquibase-core
+# transitively; added test-only so the Testcontainers boot runs the :migrations changelog.
+spring-boot-liquibase = { module = "org.springframework.boot:spring-boot-liquibase" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }

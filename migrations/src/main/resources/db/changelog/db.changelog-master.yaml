@@ -5,3 +5,6 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: baseline
+  - include:
+      file: changes/001-create-users.yaml
+      relativeToChangelogFile: true
