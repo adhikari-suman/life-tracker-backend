@@ -8,8 +8,10 @@ import com.lifetracker.application.sharing.ViewGrantAlreadyExistsException;
 import com.lifetracker.application.sharing.ViewGrantNotFoundException;
 import com.lifetracker.application.user.EmailAlreadyRegisteredException;
 import com.lifetracker.application.user.InvalidCredentialsException;
+import com.lifetracker.application.user.TooManyAttemptsException;
 import com.lifetracker.domain.user.InvalidEmailException;
 import com.lifetracker.domain.user.WeakPasswordException;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -27,6 +29,14 @@ class ApiExceptionHandler {
     @ExceptionHandler({InvalidCredentialsException.class, InvalidRefreshTokenException.class})
     ProblemDetail unauthorized(RuntimeException e) {
         return problem(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication failed.");
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    ProblemDetail tooManyAttempts(TooManyAttemptsException e, HttpServletResponse response) {
+        // Retry-After is whole seconds, at least 1 -- never advertise "try again in 0s".
+        response.setHeader("Retry-After", Long.toString(Math.max(1, e.retryAfter().toSeconds())));
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_ATTEMPTS",
+                "Too many login attempts. Try again later.");
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException.class)

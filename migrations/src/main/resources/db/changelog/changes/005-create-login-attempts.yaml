@@ -1,0 +1,39 @@
+# Hand-written to match LoginAttemptEntity (code-first, ADR-0009). One row per failed login,
+# keyed and indexed by (email, attempted_at) for the trailing-window count the throttle runs on
+# every login (ADR-0010). No unique constraint: an email fails more than once, on purpose.
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-login-attempts
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: login_attempts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_login_attempts
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempted_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_login_attempts_email_time
+            tableName: login_attempts
+            columns:
+              - column:
+                  name: email
+              - column:
+                  name: attempted_at
+      rollback:
+        - dropTable:
+            tableName: login_attempts

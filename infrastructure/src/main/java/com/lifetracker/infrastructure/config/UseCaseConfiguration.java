@@ -11,6 +11,8 @@ import com.lifetracker.application.sharing.RevokeView;
 import com.lifetracker.application.user.Authenticate;
 import com.lifetracker.application.user.RegisterUser;
 import com.lifetracker.domain.session.AccessTokens;
+import com.lifetracker.domain.user.LoginAttempts;
+import com.lifetracker.domain.user.LoginThrottle;
 import com.lifetracker.domain.session.RefreshTokens;
 import com.lifetracker.domain.session.SessionRepository;
 import com.lifetracker.domain.sharing.ShareLinkRepository;
@@ -18,6 +20,8 @@ import com.lifetracker.domain.sharing.ShareTokens;
 import com.lifetracker.domain.sharing.ViewGrantRepository;
 import com.lifetracker.domain.user.PasswordHasher;
 import com.lifetracker.domain.user.UserRepository;
+import com.lifetracker.infrastructure.security.LoginThrottleProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,6 +34,7 @@ import java.time.Clock;
  * share-token generator).
  */
 @Configuration
+@EnableConfigurationProperties(LoginThrottleProperties.class)
 class UseCaseConfiguration {
 
     @Bean
@@ -43,8 +48,14 @@ class UseCaseConfiguration {
     }
 
     @Bean
-    Authenticate authenticate(UserRepository users, PasswordHasher passwordHasher) {
-        return new Authenticate(users, passwordHasher);
+    LoginThrottle loginThrottle(LoginThrottleProperties properties) {
+        return new LoginThrottle(properties.maxAttempts(), properties.window());
+    }
+
+    @Bean
+    Authenticate authenticate(UserRepository users, PasswordHasher passwordHasher,
+                              LoginAttempts loginAttempts, LoginThrottle loginThrottle, Clock clock) {
+        return new Authenticate(users, passwordHasher, loginAttempts, loginThrottle, clock);
     }
 
     @Bean
