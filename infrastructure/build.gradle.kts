@@ -10,6 +10,7 @@ dependencies {
 	implementation(libs.spring.boot.starter.actuator)
 	implementation(libs.spring.boot.starter.data.jpa)
 	implementation(libs.spring.boot.starter.webmvc)
+	implementation(libs.spring.boot.starter.validation)
 	implementation(libs.spring.security.crypto)
 	implementation(libs.spring.security.oauth2.jose)
 	runtimeOnly(libs.postgresql)
