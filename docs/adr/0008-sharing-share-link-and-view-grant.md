@@ -13,9 +13,14 @@ entirely on the read side.
 - **Many Share Links per Book.** Rejected for v1: one "anyone with the link" switch matches the
   Google Drive model this design is patterned on and is simpler. Multiple independently-revocable
   links can come later.
-- **Show-once / hashed Share Link storage.** Rejected in favour of retrievable-but-encrypted, so
-  the owner can re-copy the live link (Drive behaviour). The token is encrypted at rest, so a
-  database dump exposes no working links.
+- **How the Share Link token is stored.** Stored **retrievable (as-is)** so the owner can re-copy
+  the live link — Google Drive's actual model: a re-copyable link governed by a revocable permission
+  and an unguessable capability, not a hashed secret. Security rests on the token's unguessability,
+  immediate revocation, and database-level at-rest encryption — deliberately *not* an app-level
+  per-link cipher, which is more than Drive itself does. Show-once/hashed storage was rejected
+  because the owner could not re-copy the same link; app-level encryption-at-rest is noted as an
+  optional hardening. Revocation still **burns** the token (a leaked link can never be reactivated)
+  — a deliberate tightening over Drive's reuse-on-re-enable.
 - **Share Link expiry by default.** Rejected: revocation is the control; optional expiry is a later
   refinement.
 - **Pending invites for View Grants** (granting an email with no account yet). Deferred: v1 grants
