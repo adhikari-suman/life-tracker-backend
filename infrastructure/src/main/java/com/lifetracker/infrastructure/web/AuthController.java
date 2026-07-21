@@ -3,6 +3,8 @@ package com.lifetracker.infrastructure.web;
 import com.lifetracker.application.session.IssuedSession;
 import com.lifetracker.application.session.OpenSession;
 import com.lifetracker.application.session.OpenSessionCommand;
+import com.lifetracker.application.session.RevokeSession;
+import com.lifetracker.application.session.RevokeSessionCommand;
 import com.lifetracker.application.session.RotateSession;
 import com.lifetracker.application.session.RotateSessionCommand;
 import com.lifetracker.application.user.Authenticate;
@@ -16,6 +18,8 @@ import com.lifetracker.infrastructure.web.dto.RegisterRequest;
 import com.lifetracker.infrastructure.web.dto.TokenResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,9 +28,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The public authentication endpoints. Thin: parse, call the use cases, assemble the response. All
- * three open a Session, so all three return the same {@link TokenResponse}. Registration auto-logs-in
- * (ADR-0007). Errors map to RFC 7807 in {@link ApiExceptionHandler}.
+ * The authentication endpoints. Thin: parse, call the use cases, assemble the response. Register,
+ * login and refresh are public and each open a Session, so all three return the same
+ * {@link TokenResponse}. Logout requires a token and ends the current Session. Errors map to
+ * RFC 7807 in {@link ApiExceptionHandler}.
  */
 @RestController
 @RequestMapping("/auth")
@@ -38,13 +43,15 @@ class AuthController {
     private final Authenticate authenticate;
     private final OpenSession openSession;
     private final RotateSession rotateSession;
+    private final RevokeSession revokeSession;
 
-    AuthController(RegisterUser registerUser, Authenticate authenticate,
-                   OpenSession openSession, RotateSession rotateSession) {
+    AuthController(RegisterUser registerUser, Authenticate authenticate, OpenSession openSession,
+                   RotateSession rotateSession, RevokeSession revokeSession) {
         this.registerUser = registerUser;
         this.authenticate = authenticate;
         this.openSession = openSession;
         this.rotateSession = rotateSession;
+        this.revokeSession = revokeSession;
     }
 
     @PostMapping("/register")
@@ -68,6 +75,12 @@ class AuthController {
         WireRefreshToken.Parsed parsed = WireRefreshToken.decode(request.refreshToken());
         return tokenResponse(rotateSession.execute(
                 new RotateSessionCommand(parsed.sessionId(), parsed.secret())));
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void logout(@AuthenticationPrincipal Jwt jwt) {
+        revokeSession.execute(new RevokeSessionCommand(AuthPrincipal.currentSession(jwt), AuthPrincipal.userId(jwt)));
     }
 
     private static TokenResponse tokenResponse(IssuedSession issued) {
