@@ -1,0 +1,46 @@
+# Hand-written to match ShareLinkEntity (code-first, ADR-0009). One link per owner (unique
+# owner_user_id); the token is unique and stored as-is (retrievable, ADR-0008). Grants deferred.
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-share-links
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: share_links
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_share_links
+                    nullable: false
+              - column:
+                  name: owner_user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_share_links_owner
+              - column:
+                  name: token
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_share_links_token
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_share_links_owner
+            baseTableName: share_links
+            baseColumnNames: owner_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: share_links

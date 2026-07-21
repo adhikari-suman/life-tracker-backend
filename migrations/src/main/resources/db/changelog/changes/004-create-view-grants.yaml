@@ -1,0 +1,64 @@
+# Hand-written to match ViewGrantEntity (code-first, ADR-0009). One grant per (owner, grantee);
+# both reference users and cascade on delete. grantee_email is denormalised for display. Grants deferred.
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-view-grants
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: view_grants
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_view_grants
+                    nullable: false
+              - column:
+                  name: owner_user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grantee_user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grantee_email
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            constraintName: uq_view_grants_owner_grantee
+            tableName: view_grants
+            columnNames: owner_user_id, grantee_user_id
+        - createIndex:
+            indexName: idx_view_grants_owner
+            tableName: view_grants
+            columns:
+              - column:
+                  name: owner_user_id
+        - addForeignKeyConstraint:
+            constraintName: fk_view_grants_owner
+            baseTableName: view_grants
+            baseColumnNames: owner_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_view_grants_grantee
+            baseTableName: view_grants
+            baseColumnNames: grantee_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: view_grants

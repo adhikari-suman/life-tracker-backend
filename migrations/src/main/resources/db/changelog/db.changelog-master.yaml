@@ -11,3 +11,9 @@ databaseChangeLog:
   - include:
       file: changes/002-create-sessions.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/003-create-share-links.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/004-create-view-grants.yaml
+      relativeToChangelogFile: true
