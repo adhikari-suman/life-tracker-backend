@@ -45,5 +45,9 @@ rather than outsourcing them. Two choices are deliberate and forward-looking:
   JWKS endpoint with a `kid`, so keys can rotate.
 - Login needs brute-force protection (rate-limit plus temporary lockout) and non-enumerating error
   messages — an implementation follow-on, not re-litigated here.
+- Registration auto-logs-in, returning the token pair like login. In v1 both tokens travel in the
+  response body uniformly for every client; moving web/Electron refresh delivery to an httpOnly
+  cookie is a tracked pre-production hardening item (a JS-reachable refresh token is an XSS
+  exposure, deferred only while no real users' data sits behind it).
 - Authentication endpoints (register, login, refresh, logout) are part of the wire and belong in
   `life-tracker-contracts/openapi.yaml`, generated — never hand-written in a frontend.
