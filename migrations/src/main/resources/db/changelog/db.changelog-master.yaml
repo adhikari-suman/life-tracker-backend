@@ -23,3 +23,9 @@ databaseChangeLog:
   - include:
       file: changes/006-create-one-time-tokens.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/007-create-accounts.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/008-create-transactions.yaml
+      relativeToChangelogFile: true

@@ -11,6 +11,15 @@ import com.lifetracker.application.user.EmailAlreadyRegisteredException;
 import com.lifetracker.application.user.InvalidCredentialsException;
 import com.lifetracker.application.user.InvalidTokenException;
 import com.lifetracker.application.user.TooManyAttemptsException;
+import com.lifetracker.application.account.InvalidAccountException;
+import com.lifetracker.application.transaction.CrossCurrencyUnsupportedException;
+import com.lifetracker.application.transaction.SameAccountException;
+import com.lifetracker.application.transaction.UnknownAccountException;
+import com.lifetracker.domain.account.InvalidAccountNameException;
+import com.lifetracker.domain.money.CurrencyMismatchException;
+import com.lifetracker.domain.money.ExcessScaleException;
+import com.lifetracker.domain.money.NegativeAmountException;
+import com.lifetracker.domain.transaction.UnbalancedTransactionException;
 import com.lifetracker.domain.user.InvalidEmailException;
 import com.lifetracker.domain.user.WeakPasswordException;
 import jakarta.servlet.http.HttpServletResponse;
@@ -94,6 +103,41 @@ class ApiExceptionHandler {
     @ExceptionHandler(CannotShareWithYourselfException.class)
     ProblemDetail cannotShareWithSelf(CannotShareWithYourselfException e) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "CANNOT_SHARE_WITH_SELF", "You cannot share a book with yourself.");
+    }
+
+    // ---------- Ledger ----------
+
+    @ExceptionHandler({InvalidAccountException.class, InvalidAccountNameException.class,
+            UnbalancedTransactionException.class, CurrencyMismatchException.class,
+            NegativeAmountException.class, ExcessScaleException.class, MalformedMoneyException.class})
+    ProblemDetail ledgerValidation(RuntimeException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION", e.getMessage());
+    }
+
+    @ExceptionHandler(UnknownAccountException.class)
+    ProblemDetail unknownAccount(UnknownAccountException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "ACCOUNT_NOT_FOUND", "A referenced account does not exist.");
+    }
+
+    @ExceptionHandler(SameAccountException.class)
+    ProblemDetail sameAccount(SameAccountException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "SAME_ACCOUNT", "The from and to accounts must differ.");
+    }
+
+    @ExceptionHandler(CrossCurrencyUnsupportedException.class)
+    ProblemDetail crossCurrency(CrossCurrencyUnsupportedException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "CROSS_CURRENCY_UNSUPPORTED",
+                "Cross-currency movements are not supported yet.");
+    }
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    ProblemDetail accountNotFound(AccountNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "ACCOUNT_NOT_FOUND", "Account not found.");
+    }
+
+    @ExceptionHandler(TransactionNotFoundException.class)
+    ProblemDetail transactionNotFound(TransactionNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "TRANSACTION_NOT_FOUND", "Transaction not found.");
     }
 
     private static ProblemDetail problem(HttpStatus status, String code, String detail) {

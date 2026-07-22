@@ -1,0 +1,93 @@
+# Hand-written to match TransactionEntity + PostingEntity (code-first, ADR-0009). The double-entry
+# write model (ADR-0012): a transaction header (owner + date) and its balanced postings. Money is
+# NUMERIC(19,4) plus a currency (ADR-0002). Owner-scoped; postings carry no owner (they hang off a
+# transaction that does). Indexed for the balance sum (by account) and the newest-first list (by owner).
+databaseChangeLog:
+  - changeSet:
+      id: 008-create-transactions
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: transactions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_transactions
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tx_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: postings
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_postings
+                    nullable: false
+              - column:
+                  name: transaction_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: side
+                  type: varchar(6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: numeric(19,4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_transactions_owner
+            tableName: transactions
+            columns:
+              - column:
+                  name: owner_id
+        - createIndex:
+            indexName: idx_postings_transaction
+            tableName: postings
+            columns:
+              - column:
+                  name: transaction_id
+        - createIndex:
+            indexName: idx_postings_account
+            tableName: postings
+            columns:
+              - column:
+                  name: account_id
+      rollback:
+        - dropTable:
+            tableName: postings
+        - dropTable:
+            tableName: transactions

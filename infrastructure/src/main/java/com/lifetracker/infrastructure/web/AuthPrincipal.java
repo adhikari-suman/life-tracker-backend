@@ -1,5 +1,6 @@
 package com.lifetracker.infrastructure.web;
 
+import com.lifetracker.domain.ledger.OwnerId;
 import com.lifetracker.domain.session.SessionId;
 import com.lifetracker.domain.user.UserId;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -17,6 +18,14 @@ final class AuthPrincipal {
 
     static UserId userId(Jwt jwt) {
         return UserId.of(UUID.fromString(jwt.getSubject()));
+    }
+
+    /**
+     * The Ledger's owner key for this caller — the same id as {@link #userId}, but as the Ledger's own
+     * {@link OwnerId} type, so the Ledger context never references a User (CONTEXT-MAP, ADR-0006).
+     */
+    static OwnerId ownerId(Jwt jwt) {
+        return OwnerId.of(userId(jwt).value());
     }
 
     static SessionId currentSession(Jwt jwt) {

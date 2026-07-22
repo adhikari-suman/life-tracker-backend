@@ -1,5 +1,6 @@
 package com.lifetracker.architecture;
 
+import com.lifetracker.domain.ledger.OwnerId;
 import com.lifetracker.domain.user.UserId;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -127,24 +128,24 @@ class ArchitectureTest {
     static final ArchRule query_reads_are_owner_scoped = methods()
             .that().areDeclaredInClassesThat().haveSimpleNameEndingWith("QueryService")
             .and().arePublic()
-            .should(haveAUserIdParameter())
+            .should(takeAnOwnerScopeParameter())
             .because("ADR-0006 puts tenant isolation in the app layer, so every query that reads "
-                    + "owned data must be scoped by the owner's UserId, threaded from the token. A "
-                    + "read with no owner parameter cannot filter by owner -- it is exactly the "
-                    + "silent cross-tenant leak ADR-0001 feared. Strengthen this as viewer reads "
-                    + "land: a grant- or Share-Link-authorized read gets its own explicit carve-out "
-                    + "here, rather than quietly slipping through.");
+                    + "owned data must be scoped by the owner, threaded from the token -- a UserId in "
+                    + "Identity & Sharing, an OwnerId in the Ledger (which never references a User). A "
+                    + "read with no owner parameter cannot filter by owner -- it is exactly the silent "
+                    + "cross-tenant leak ADR-0001 feared. Strengthen this as viewer reads land: a grant- "
+                    + "or Share-Link-authorized read gets its own explicit carve-out here.");
 
-    /** A public query-service method is owner-scoped only if the owner's id is one of its inputs. */
-    private static ArchCondition<JavaMethod> haveAUserIdParameter() {
-        return new ArchCondition<>("take the owner's UserId as a parameter") {
+    /** A public query-service method is owner-scoped only if an owner id (UserId or OwnerId) is one of its inputs. */
+    private static ArchCondition<JavaMethod> takeAnOwnerScopeParameter() {
+        return new ArchCondition<>("take an owner-scope parameter (UserId or OwnerId)") {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
                 boolean scoped = method.getRawParameterTypes().stream()
-                        .anyMatch(type -> type.isEquivalentTo(UserId.class));
+                        .anyMatch(type -> type.isEquivalentTo(UserId.class) || type.isEquivalentTo(OwnerId.class));
                 if (!scoped) {
                     events.add(SimpleConditionEvent.violated(method,
-                            method.getFullName() + " reads tenant data with no UserId (owner) parameter"));
+                            method.getFullName() + " reads tenant data with no owner (UserId/OwnerId) parameter"));
                 }
             }
         };

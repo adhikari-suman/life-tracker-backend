@@ -1,5 +1,6 @@
 package com.lifetracker.infrastructure.config;
 
+import com.lifetracker.application.account.OpenAccount;
 import com.lifetracker.application.session.OpenSession;
 import com.lifetracker.application.session.RevokeAllSessions;
 import com.lifetracker.application.session.RevokeSession;
@@ -14,6 +15,8 @@ import com.lifetracker.application.user.RequestPasswordReset;
 import com.lifetracker.application.user.ResetPassword;
 import com.lifetracker.application.user.SendEmailVerification;
 import com.lifetracker.application.user.VerifyEmail;
+import com.lifetracker.application.transaction.RecordTransaction;
+import com.lifetracker.domain.account.AccountRepository;
 import com.lifetracker.domain.notification.EmailSender;
 import com.lifetracker.domain.session.AccessTokens;
 import com.lifetracker.domain.session.RefreshTokens;
@@ -23,6 +26,7 @@ import com.lifetracker.domain.sharing.ShareTokens;
 import com.lifetracker.domain.sharing.ViewGrantRepository;
 import com.lifetracker.domain.token.OneTimeTokenRepository;
 import com.lifetracker.domain.token.OneTimeTokens;
+import com.lifetracker.domain.transaction.TransactionRepository;
 import com.lifetracker.domain.user.LoginAttempts;
 import com.lifetracker.domain.user.LoginThrottle;
 import com.lifetracker.domain.user.PasswordHasher;
@@ -48,6 +52,16 @@ class UseCaseConfiguration {
     @Bean
     Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    OpenAccount openAccount(AccountRepository accounts) {
+        return new OpenAccount(accounts);
+    }
+
+    @Bean
+    RecordTransaction recordTransaction(AccountRepository accounts, TransactionRepository transactions) {
+        return new RecordTransaction(accounts, transactions);
     }
 
     @Bean

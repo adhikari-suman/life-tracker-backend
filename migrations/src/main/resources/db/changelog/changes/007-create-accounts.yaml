@@ -1,0 +1,53 @@
+# Hand-written to match AccountEntity (code-first, ADR-0009). Ledger accounts (ADR-0001..0003): a
+# kind and a fixed currency, owner-scoped by owner_id stamped at the boundary (ADR-0006). No FK to
+# users -- the Ledger context does not reference Identity (CONTEXT-MAP).
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-accounts
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: accounts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_accounts
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kind
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_accounts_owner
+            tableName: accounts
+            columns:
+              - column:
+                  name: owner_id
+      rollback:
+        - dropTable:
+            tableName: accounts
