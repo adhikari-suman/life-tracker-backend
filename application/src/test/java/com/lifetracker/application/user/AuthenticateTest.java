@@ -60,6 +60,22 @@ class AuthenticateTest {
     }
 
     @Test
+    void an_unknown_email_still_spends_a_verification_so_timing_does_not_leak_existence() {
+        assertThrows(InvalidCredentialsException.class,
+                () -> authenticate.execute(new AuthenticateCommand("ghost@example.com", "correct horse battery")));
+        assertEquals(1, hasher.verifyInVainCount());
+    }
+
+    @Test
+    void a_present_user_with_a_wrong_password_does_the_real_verify_not_the_dummy() {
+        registerUser.execute(new RegisterUserCommand("sam@example.com", "correct horse battery"));
+        assertThrows(InvalidCredentialsException.class,
+                () -> authenticate.execute(new AuthenticateCommand("sam@example.com", "wrong password here")));
+        // The dummy verify is only for the no-user branch; a real user runs the real matches().
+        assertEquals(0, hasher.verifyInVainCount());
+    }
+
+    @Test
     void locks_out_after_the_limit_of_failures() {
         registerUser.execute(new RegisterUserCommand("sam@example.com", "correct horse battery"));
         failThreeTimes("sam@example.com");

@@ -45,7 +45,10 @@ the throttle is not itself recorded. This closes the follow-on flagged in ADR-00
   design that does not leak existence.
 - The `429`, its `TOO_MANY_ATTEMPTS` code, and the `Retry-After` header are part of the wire —
   `life-tracker-contracts/openapi.yaml`, generated, never hand-written in a frontend.
-- The timing-oracle noted in ADR-0007 (skipping the hash on an unknown email) is still open and
-  independent of this change.
+- The timing-oracle noted in ADR-0007 (an unknown email skipping the hash) is closed alongside this
+  work: the no-user path now spends a dummy Argon2 verify (`PasswordHasher.verifyInVain`), so login
+  latency no longer answers whether an email exists. It equalizes the dominant asymmetry — the hash
+  — not every last nanosecond of the surrounding DB work, which is symmetric and negligible beside
+  Argon2 anyway.
 - `Authenticate` now depends on a `LoginAttempts` port, a `LoginThrottle` policy, and a `Clock`; the
   policy's limit and window come from config, so tuning is a redeploy, not a code change.

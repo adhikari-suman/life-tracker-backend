@@ -23,7 +23,8 @@ import java.util.Optional;
  *
  * <p>Every credential failure raises the same {@link InvalidCredentialsException}: a wrong password,
  * an unknown email, and a malformed input are indistinguishable, so login leaks nothing about which
- * emails exist.
+ * emails exist -- including through timing, since the unknown-email path spends a dummy verification
+ * rather than returning early.
  *
  * <p>Brute force is bounded per email by a {@link LoginThrottle} (ADR-0010): once too many failures
  * land within the trailing window, an attempt raises {@link TooManyAttemptsException} <em>before</em>
@@ -69,11 +70,18 @@ public final class Authenticate {
             throw new TooManyAttemptsException(throttle.retryAfter(recentFailures, now));
         }
 
-        // Absent user: still counted, still indistinguishable. NOTE (deferred hardening): skipping
-        // the hash on a miss is a timing oracle for "does this email exist?"; equalize later with a
-        // dummy verify in the hasher (ADR-0007).
         Optional<User> user = users.findByEmail(email);
-        if (user.isEmpty() || !passwordHasher.matches(raw, user.get().passwordHash())) {
+        boolean authenticated;
+        if (user.isPresent()) {
+            authenticated = passwordHasher.matches(raw, user.get().passwordHash());
+        } else {
+            // No such user -- but spend a verification anyway, so an unknown email costs the same
+            // wall-clock as a real one. Returning early here would let response time answer "does
+            // this email exist?", the very leak the uniform 401 exists to prevent (ADR-0007).
+            passwordHasher.verifyInVain(raw);
+            authenticated = false;
+        }
+        if (!authenticated) {
             loginAttempts.recordFailure(email, now);
             throw new InvalidCredentialsException();
         }

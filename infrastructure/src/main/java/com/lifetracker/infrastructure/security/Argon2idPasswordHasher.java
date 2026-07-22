@@ -17,6 +17,11 @@ class Argon2idPasswordHasher implements PasswordHasher {
     // saltLength=16, hashLength=32, parallelism=1, memory=19456 KiB (19 MiB), iterations=2
     private final Argon2PasswordEncoder encoder = new Argon2PasswordEncoder(16, 32, 1, 19456, 2);
 
+    // A throwaway hash carrying the real parameters. verifyInVain checks against it so the no-user
+    // login path spends the same Argon2 cost as a real verify. The plaintext is irrelevant -- only
+    // the work matters. Computed once, at bean construction.
+    private final String dummyHash = encoder.encode("timing-equalizer-value-not-a-credential");
+
     @Override
     public PasswordHash hash(RawPassword raw) {
         return new PasswordHash(encoder.encode(raw.value()));
@@ -25,5 +30,11 @@ class Argon2idPasswordHasher implements PasswordHasher {
     @Override
     public boolean matches(RawPassword raw, PasswordHash hash) {
         return encoder.matches(raw.value(), hash.value());
+    }
+
+    @Override
+    public void verifyInVain(RawPassword raw) {
+        // Same work as matches(); the boolean is meaningless against a dummy, so it is discarded.
+        encoder.matches(raw.value(), dummyHash);
     }
 }

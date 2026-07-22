@@ -11,6 +11,8 @@ import com.lifetracker.domain.user.RawPassword;
  */
 final class FakePasswordHasher implements PasswordHasher {
 
+    private int verifyInVainCount;
+
     @Override
     public PasswordHash hash(RawPassword raw) {
         return new PasswordHash("hashed:" + raw.value());
@@ -19,5 +21,15 @@ final class FakePasswordHasher implements PasswordHasher {
     @Override
     public boolean matches(RawPassword raw, PasswordHash hash) {
         return hash.value().equals("hashed:" + raw.value());
+    }
+
+    @Override
+    public void verifyInVain(RawPassword raw) {
+        verifyInVainCount++;
+    }
+
+    /** How many times the timing-equalizing dummy verify was invoked, for assertions. */
+    int verifyInVainCount() {
+        return verifyInVainCount;
     }
 }
