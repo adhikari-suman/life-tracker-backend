@@ -20,6 +20,6 @@ public class UserQueryService {
 
     public Optional<UserView> findById(UserId id) {
         return data.findById(id.value())
-                .map(e -> new UserView(e.getId(), e.getEmail(), e.getCreatedAt()));
+                .map(e -> new UserView(e.getId(), e.getEmail(), e.isEmailVerified(), e.getCreatedAt()));
     }
 }

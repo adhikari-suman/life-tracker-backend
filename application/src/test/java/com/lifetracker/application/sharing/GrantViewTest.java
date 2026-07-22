@@ -28,9 +28,16 @@ class GrantViewTest {
         return user;
     }
 
+    private UserId verifiedOwner() {
+        User owner = register("owner@example.com");
+        owner.verifyEmail();
+        users.save(owner);
+        return owner.id();
+    }
+
     @Test
     void grants_view_to_an_existing_user() {
-        UserId owner = UserId.generate();
+        UserId owner = verifiedOwner();
         User grantee = register("viewer@example.com");
 
         ViewGrant grant = grantView.execute(new GrantViewCommand(owner, "viewer@example.com"));
@@ -42,13 +49,14 @@ class GrantViewTest {
 
     @Test
     void rejects_an_unknown_email() {
+        UserId owner = verifiedOwner();
         assertThrows(GranteeNotFoundException.class,
-                () -> grantView.execute(new GrantViewCommand(UserId.generate(), "nobody@example.com")));
+                () -> grantView.execute(new GrantViewCommand(owner, "nobody@example.com")));
     }
 
     @Test
     void rejects_a_duplicate_grant() {
-        UserId owner = UserId.generate();
+        UserId owner = verifiedOwner();
         register("viewer@example.com");
         grantView.execute(new GrantViewCommand(owner, "viewer@example.com"));
 
@@ -59,13 +67,24 @@ class GrantViewTest {
     @Test
     void rejects_sharing_with_yourself() {
         User me = register("me@example.com");
+        me.verifyEmail();
+        users.save(me);
         assertThrows(CannotShareWithYourselfException.class,
                 () -> grantView.execute(new GrantViewCommand(me.id(), "me@example.com")));
     }
 
     @Test
     void rejects_a_malformed_email() {
+        UserId owner = verifiedOwner();
         assertThrows(InvalidEmailException.class,
-                () -> grantView.execute(new GrantViewCommand(UserId.generate(), "not-an-email")));
+                () -> grantView.execute(new GrantViewCommand(owner, "not-an-email")));
+    }
+
+    @Test
+    void rejects_an_unverified_owner() {
+        User owner = register("unverified-owner@example.com"); // never verified
+        register("viewer@example.com");
+        assertThrows(EmailNotVerifiedException.class,
+                () -> grantView.execute(new GrantViewCommand(owner.id(), "viewer@example.com")));
     }
 }

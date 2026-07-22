@@ -28,6 +28,11 @@ public final class GrantView {
     }
 
     public ViewGrant execute(GrantViewCommand command) {
+        User owner = users.findById(command.ownerId()).orElseThrow(EmailNotVerifiedException::new);
+        if (!owner.isEmailVerified()) { // ADR-0011: only a verified owner may share
+            throw new EmailNotVerifiedException();
+        }
+
         Email granteeEmail = new Email(command.granteeEmail()); // InvalidEmailException -> 422
         User grantee = users.findByEmail(granteeEmail).orElseThrow(GranteeNotFoundException::new);
 

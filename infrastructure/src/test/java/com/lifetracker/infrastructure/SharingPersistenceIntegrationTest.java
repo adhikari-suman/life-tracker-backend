@@ -12,7 +12,9 @@ import com.lifetracker.application.user.RegisterUserCommand;
 import com.lifetracker.domain.sharing.ShareLinkRepository;
 import com.lifetracker.domain.sharing.ShareToken;
 import com.lifetracker.domain.sharing.ViewGrant;
+import com.lifetracker.domain.user.User;
 import com.lifetracker.domain.user.UserId;
+import com.lifetracker.domain.user.UserRepository;
 import com.lifetracker.infrastructure.persistence.sharing.ShareLinkQueryService;
 import com.lifetracker.infrastructure.persistence.sharing.ViewGrantQueryService;
 import com.lifetracker.infrastructure.persistence.sharing.ViewGrantView;
@@ -55,9 +57,21 @@ class SharingPersistenceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     ViewGrantQueryService viewGrantQuery;
 
+    @Autowired
+    UserRepository users;
+
+    /** Register an owner and mark their email verified — sharing is gated on verification (ADR-0011). */
+    private UserId verifiedOwner(String email) {
+        UserId id = registerUser.execute(new RegisterUserCommand(email, "correct horse battery"));
+        User user = users.findById(id).orElseThrow();
+        user.verifyEmail();
+        users.save(user);
+        return id;
+    }
+
     @Test
     void share_link_round_trips_and_resolves_by_token() {
-        UserId owner = registerUser.execute(new RegisterUserCommand("share-owner@example.com", "correct horse battery"));
+        UserId owner = verifiedOwner("share-owner@example.com");
 
         CreateShareLinkResult result = createShareLink.execute(owner);
         assertTrue(result.created());
@@ -73,7 +87,7 @@ class SharingPersistenceIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void view_grant_round_trips_and_lists() {
-        UserId owner = registerUser.execute(new RegisterUserCommand("grant-owner@example.com", "correct horse battery"));
+        UserId owner = verifiedOwner("grant-owner@example.com");
         registerUser.execute(new RegisterUserCommand("grant-viewer@example.com", "correct horse battery"));
 
         ViewGrant grant = grantView.execute(new GrantViewCommand(owner, "grant-viewer@example.com"));

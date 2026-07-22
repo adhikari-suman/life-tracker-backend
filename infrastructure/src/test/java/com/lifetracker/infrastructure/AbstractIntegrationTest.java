@@ -19,7 +19,7 @@ import java.util.Base64;
  * would strip anyway.
  */
 @SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, CapturingEmailSender.class})
 abstract class AbstractIntegrationTest {
 
     @DynamicPropertySource

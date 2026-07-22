@@ -12,8 +12,8 @@ public final class User {
 
     private final UserId id;
     private final Email email;
-    private final PasswordHash passwordHash;
-    private final boolean emailVerified;
+    private PasswordHash passwordHash;
+    private boolean emailVerified;
 
     private User(UserId id, Email email, PasswordHash passwordHash, boolean emailVerified) {
         this.id = Objects.requireNonNull(id, "id");
@@ -50,6 +50,16 @@ public final class User {
 
     public boolean isEmailVerified() {
         return emailVerified;
+    }
+
+    /** Mark this User's email verified. Idempotent — verifying an already-verified User is a no-op. */
+    public void verifyEmail() {
+        this.emailVerified = true;
+    }
+
+    /** Replace the stored credential, e.g. after a password reset. */
+    public void changePassword(PasswordHash newHash) {
+        this.passwordHash = Objects.requireNonNull(newHash, "newHash");
     }
 
     @Override

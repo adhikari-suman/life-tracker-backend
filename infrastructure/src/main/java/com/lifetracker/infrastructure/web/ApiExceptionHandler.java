@@ -3,11 +3,13 @@ package com.lifetracker.infrastructure.web;
 import com.lifetracker.application.session.InvalidRefreshTokenException;
 import com.lifetracker.application.session.SessionNotFoundException;
 import com.lifetracker.application.sharing.CannotShareWithYourselfException;
+import com.lifetracker.application.sharing.EmailNotVerifiedException;
 import com.lifetracker.application.sharing.GranteeNotFoundException;
 import com.lifetracker.application.sharing.ViewGrantAlreadyExistsException;
 import com.lifetracker.application.sharing.ViewGrantNotFoundException;
 import com.lifetracker.application.user.EmailAlreadyRegisteredException;
 import com.lifetracker.application.user.InvalidCredentialsException;
+import com.lifetracker.application.user.InvalidTokenException;
 import com.lifetracker.application.user.TooManyAttemptsException;
 import com.lifetracker.domain.user.InvalidEmailException;
 import com.lifetracker.domain.user.WeakPasswordException;
@@ -37,6 +39,16 @@ class ApiExceptionHandler {
         response.setHeader("Retry-After", Long.toString(Math.max(1, e.retryAfter().toSeconds())));
         return problem(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_ATTEMPTS",
                 "Too many login attempts. Try again later.");
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    ProblemDetail invalidToken(InvalidTokenException e) {
+        return problem(HttpStatus.BAD_REQUEST, "INVALID_TOKEN", "The token is invalid or has expired.");
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    ProblemDetail emailNotVerified(EmailNotVerifiedException e) {
+        return problem(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED", "Verify your email before sharing.");
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException.class)

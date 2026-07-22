@@ -11,6 +11,7 @@ import com.lifetracker.application.user.Authenticate;
 import com.lifetracker.application.user.AuthenticateCommand;
 import com.lifetracker.application.user.RegisterUser;
 import com.lifetracker.application.user.RegisterUserCommand;
+import com.lifetracker.application.user.SendEmailVerification;
 import com.lifetracker.domain.user.UserId;
 import com.lifetracker.infrastructure.web.dto.LoginRequest;
 import com.lifetracker.infrastructure.web.dto.RefreshRequest;
@@ -41,14 +42,17 @@ class AuthController {
 
     private final RegisterUser registerUser;
     private final Authenticate authenticate;
+    private final SendEmailVerification sendEmailVerification;
     private final OpenSession openSession;
     private final RotateSession rotateSession;
     private final RevokeSession revokeSession;
 
-    AuthController(RegisterUser registerUser, Authenticate authenticate, OpenSession openSession,
+    AuthController(RegisterUser registerUser, Authenticate authenticate,
+                   SendEmailVerification sendEmailVerification, OpenSession openSession,
                    RotateSession rotateSession, RevokeSession revokeSession) {
         this.registerUser = registerUser;
         this.authenticate = authenticate;
+        this.sendEmailVerification = sendEmailVerification;
         this.openSession = openSession;
         this.rotateSession = rotateSession;
         this.revokeSession = revokeSession;
@@ -59,6 +63,7 @@ class AuthController {
     TokenResponse register(@Valid @RequestBody RegisterRequest request,
                            @RequestHeader(value = "User-Agent", required = false) String userAgent) {
         UserId userId = registerUser.execute(new RegisterUserCommand(request.email(), request.password()));
+        sendEmailVerification.execute(userId);
         return tokenResponse(openSession.execute(new OpenSessionCommand(userId, deviceLabel(null, userAgent))));
     }
 

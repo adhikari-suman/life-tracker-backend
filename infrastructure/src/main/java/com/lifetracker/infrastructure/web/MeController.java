@@ -24,6 +24,6 @@ class MeController {
         UserId userId = AuthPrincipal.userId(jwt);
         UserView view = users.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("authenticated user no longer exists: " + userId.value()));
-        return new UserResponse(view.id(), view.email(), view.createdAt());
+        return new UserResponse(view.id(), view.email(), view.emailVerified(), view.createdAt());
     }
 }

@@ -1,0 +1,56 @@
+# Hand-written to match OneTimeTokenEntity (code-first, ADR-0009). Verification and password-reset
+# tokens (ADR-0011): stored as a SHA-256 hash, with a purpose and expiry. token_hash is unique (a
+# hash is looked up directly); indexed by (user_id, purpose) for the invalidate-prior sweep.
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-one-time-tokens
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: one_time_tokens
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_one_time_tokens
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token_hash
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_one_time_tokens_hash
+              - column:
+                  name: purpose
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_one_time_tokens_user_purpose
+            tableName: one_time_tokens
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: purpose
+      rollback:
+        - dropTable:
+            tableName: one_time_tokens

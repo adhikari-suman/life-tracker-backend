@@ -23,6 +23,13 @@ class RevokeViewTest {
     private final GrantView grantView = new GrantView(grants, users, clock);
     private final RevokeView revokeView = new RevokeView(grants);
 
+    private UserId verifiedOwner() {
+        User owner = User.register(UserId.generate(), new Email("owner@example.com"), new PasswordHash("hash"));
+        owner.verifyEmail();
+        users.save(owner);
+        return owner.id();
+    }
+
     private ViewGrant grantTo(UserId owner, String email) {
         users.save(User.register(UserId.generate(), new Email(email), new PasswordHash("hash")));
         return grantView.execute(new GrantViewCommand(owner, email));
@@ -30,7 +37,7 @@ class RevokeViewTest {
 
     @Test
     void owner_revokes_their_own_grant() {
-        UserId owner = UserId.generate();
+        UserId owner = verifiedOwner();
         ViewGrant grant = grantTo(owner, "viewer@example.com");
 
         revokeView.execute(new RevokeViewCommand(owner, grant.id()));
@@ -46,7 +53,7 @@ class RevokeViewTest {
 
     @Test
     void revoking_someone_elses_grant_is_not_found() {
-        UserId owner = UserId.generate();
+        UserId owner = verifiedOwner();
         ViewGrant grant = grantTo(owner, "viewer@example.com");
 
         assertThrows(ViewGrantNotFoundException.class,

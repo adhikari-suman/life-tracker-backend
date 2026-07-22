@@ -15,8 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The sharing endpoints over HTTP (MockMvc), owner-scoped to the token. Share Link lifecycle,
- * View Grant lifecycle, and the RFC 7807 error mappings.
+ * The sharing endpoints over HTTP (MockMvc), owner-scoped to the token and gated on a verified email
+ * (ADR-0011). Share Link lifecycle, View Grant lifecycle, and the RFC 7807 error mappings.
  */
 @AutoConfigureMockMvc
 class SharingEndpointsIntegrationTest extends AbstractIntegrationTest {
@@ -24,6 +24,14 @@ class SharingEndpointsIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     MockMvc mvc;
 
+    @Autowired
+    CapturingEmailSender emails;
+
+    private static String bearer(String token) {
+        return "Bearer " + token;
+    }
+
+    /** Register, returning the access token but leaving the email UNVERIFIED. */
     private String registerAndToken(String email) throws Exception {
         String creds = "{\"email\":\"" + email + "\",\"password\":\"correct horse battery\"}";
         MvcResult r = mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(creds))
@@ -31,13 +39,19 @@ class SharingEndpointsIntegrationTest extends AbstractIntegrationTest {
         return JsonPath.read(r.getResponse().getContentAsString(), "$.accessToken");
     }
 
-    private static String bearer(String token) {
-        return "Bearer " + token;
+    /** Register and verify the email (so sharing is unlocked), returning the access token. */
+    private String registerVerifiedAndToken(String email) throws Exception {
+        String token = registerAndToken(email);
+        String verifyToken = emails.latestToken(CapturingEmailSender.Kind.VERIFICATION, email);
+        mvc.perform(post("/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                .andExpect(status().isNoContent());
+        return token;
     }
 
     @Test
     void share_link_lifecycle() throws Exception {
-        String token = registerAndToken("share-web-owner@example.com");
+        String token = registerVerifiedAndToken("share-web-owner@example.com");
 
         mvc.perform(post("/me/share-link").header("Authorization", bearer(token)))
                 .andExpect(status().isCreated())
@@ -60,8 +74,8 @@ class SharingEndpointsIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void view_grant_lifecycle() throws Exception {
-        String owner = registerAndToken("grant-web-owner@example.com");
-        registerAndToken("grant-web-viewer@example.com"); // grantee must exist
+        String owner = registerVerifiedAndToken("grant-web-owner@example.com");
+        registerAndToken("grant-web-viewer@example.com"); // grantee must exist (need not be verified)
 
         MvcResult granted = mvc.perform(post("/me/view-grants").header("Authorization", bearer(owner))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"grant-web-viewer@example.com\"}"))
@@ -88,11 +102,20 @@ class SharingEndpointsIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void granting_to_an_unknown_email_is_404() throws Exception {
-        String owner = registerAndToken("grant-unknown-owner@example.com");
+        String owner = registerVerifiedAndToken("grant-unknown-owner@example.com");
         mvc.perform(post("/me/view-grants").header("Authorization", bearer(owner))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"nobody@example.com\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("GRANTEE_NOT_FOUND"));
+    }
+
+    @Test
+    void sharing_is_forbidden_until_the_email_is_verified() throws Exception {
+        String token = registerAndToken("unverified-sharer@example.com"); // NOT verified
+
+        mvc.perform(post("/me/share-link").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));
     }
 
     @Test
