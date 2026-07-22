@@ -1,11 +1,17 @@
 package com.lifetracker.architecture;
 
+import com.lifetracker.domain.user.UserId;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
@@ -114,4 +120,33 @@ class ArchitectureTest {
             .and().resideInAPackage("..domain..")
             .should().beInterfaces()
             .because("the domain owns the port; infrastructure owns the adapter");
+
+    // ---------- Tenant isolation (ADR-0006) ----------
+
+    @ArchTest
+    static final ArchRule query_reads_are_owner_scoped = methods()
+            .that().areDeclaredInClassesThat().haveSimpleNameEndingWith("QueryService")
+            .and().arePublic()
+            .should(haveAUserIdParameter())
+            .because("ADR-0006 puts tenant isolation in the app layer, so every query that reads "
+                    + "owned data must be scoped by the owner's UserId, threaded from the token. A "
+                    + "read with no owner parameter cannot filter by owner -- it is exactly the "
+                    + "silent cross-tenant leak ADR-0001 feared. Strengthen this as viewer reads "
+                    + "land: a grant- or Share-Link-authorized read gets its own explicit carve-out "
+                    + "here, rather than quietly slipping through.");
+
+    /** A public query-service method is owner-scoped only if the owner's id is one of its inputs. */
+    private static ArchCondition<JavaMethod> haveAUserIdParameter() {
+        return new ArchCondition<>("take the owner's UserId as a parameter") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                boolean scoped = method.getRawParameterTypes().stream()
+                        .anyMatch(type -> type.isEquivalentTo(UserId.class));
+                if (!scoped) {
+                    events.add(SimpleConditionEvent.violated(method,
+                            method.getFullName() + " reads tenant data with no UserId (owner) parameter"));
+                }
+            }
+        };
+    }
 }

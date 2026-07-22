@@ -36,4 +36,11 @@ Java enforcement made non-forgettable by an architecture test — is the decisio
 - Read access for viewers (own Book *or* a Book you hold a grant / valid link for) is resolved in
   the query services, against the grant and Share Link records — the one place isolation and
   sharing meet.
-- If isolation coverage ever feels fragile, the ArchUnit rule is the first thing to strengthen.
+- The guard is live for the read side: `query_reads_are_owner_scoped` (in `ArchitectureTest`) fails
+  the build unless every `*QueryService` method takes the owner's `UserId`, so a read added with no
+  owner parameter cannot compile-and-ship. While User↔Book is 1:1, that `UserId` *is* the OwnerId
+  (ADR-0005); a distinct `OwnerId`/`BookId` arrives only if a User gets many Books. Write-side
+  scoping currently rides on owner-scoped repositories plus the cross-owner test.
+- If isolation coverage ever feels fragile, the ArchUnit rule is the first thing to strengthen — and
+  the first place a viewer (grant / Share-Link) read earns an explicit carve-out rather than a
+  silent pass.
