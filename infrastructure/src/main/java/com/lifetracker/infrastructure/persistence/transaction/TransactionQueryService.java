@@ -48,6 +48,6 @@ public class TransactionQueryService {
         List<PostingView> views = postingRows.stream()
                 .map(p -> new PostingView(p.getAccountId(), p.getSide(), p.getAmount(), p.getCurrency()))
                 .toList();
-        return new TransactionView(header.getId(), header.getDate(), views);
+        return new TransactionView(header.getId(), header.getDate(), header.getExchangeRate(), views);
     }
 }

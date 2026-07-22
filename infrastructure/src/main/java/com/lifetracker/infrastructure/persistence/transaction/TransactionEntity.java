@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -28,16 +29,21 @@ class TransactionEntity {
     @Column(name = "tx_date", nullable = false, updatable = false)
     private LocalDate date;
 
+    // Null for a same-currency transaction; the derived rate for a cross-currency one (ADR-0002).
+    @Column(name = "exchange_rate", precision = 19, scale = 8, updatable = false)
+    private BigDecimal exchangeRate;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     protected TransactionEntity() {
     }
 
-    TransactionEntity(UUID id, UUID ownerId, LocalDate date) {
+    TransactionEntity(UUID id, UUID ownerId, LocalDate date, BigDecimal exchangeRate) {
         this.id = id;
         this.ownerId = ownerId;
         this.date = date;
+        this.exchangeRate = exchangeRate;
     }
 
     UUID getId() {
@@ -50,6 +56,10 @@ class TransactionEntity {
 
     LocalDate getDate() {
         return date;
+    }
+
+    BigDecimal getExchangeRate() {
+        return exchangeRate;
     }
 
     OffsetDateTime getCreatedAt() {

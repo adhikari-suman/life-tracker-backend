@@ -1,0 +1,18 @@
+# Adds the derived exchange rate to a transaction, for cross-currency movements (ADR-0002).
+# Nullable: a same-currency transaction has none. For reference only -- never multiplied to make an
+# amount. Append-only; matches the exchange_rate column on TransactionEntity.
+databaseChangeLog:
+  - changeSet:
+      id: 009-add-transaction-exchange-rate
+      author: adhikari-suman
+      changes:
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column:
+                  name: exchange_rate
+                  type: numeric(19,8)
+      rollback:
+        - dropColumn:
+            tableName: transactions
+            columnName: exchange_rate

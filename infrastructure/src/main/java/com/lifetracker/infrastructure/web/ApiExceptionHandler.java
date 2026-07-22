@@ -12,7 +12,7 @@ import com.lifetracker.application.user.InvalidCredentialsException;
 import com.lifetracker.application.user.InvalidTokenException;
 import com.lifetracker.application.user.TooManyAttemptsException;
 import com.lifetracker.application.account.InvalidAccountException;
-import com.lifetracker.application.transaction.CrossCurrencyUnsupportedException;
+import com.lifetracker.application.transaction.ConvertedAmountRequiredException;
 import com.lifetracker.application.transaction.SameAccountException;
 import com.lifetracker.application.transaction.UnknownAccountException;
 import com.lifetracker.domain.account.InvalidAccountNameException;
@@ -124,10 +124,10 @@ class ApiExceptionHandler {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "SAME_ACCOUNT", "The from and to accounts must differ.");
     }
 
-    @ExceptionHandler(CrossCurrencyUnsupportedException.class)
-    ProblemDetail crossCurrency(CrossCurrencyUnsupportedException e) {
-        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "CROSS_CURRENCY_UNSUPPORTED",
-                "Cross-currency movements are not supported yet.");
+    @ExceptionHandler(ConvertedAmountRequiredException.class)
+    ProblemDetail convertedAmountRequired(ConvertedAmountRequiredException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "CONVERTED_AMOUNT_REQUIRED",
+                "A cross-currency movement needs the amount arriving in the destination (toAmount).");
     }
 
     @ExceptionHandler(AccountNotFoundException.class)

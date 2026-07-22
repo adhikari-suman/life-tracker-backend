@@ -51,7 +51,7 @@ class TransactionController {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
         TransactionId id = recordTransaction.execute(new RecordTransactionCommand(
                 owner, request.date(), AccountId.of(request.from()), AccountId.of(request.to()),
-                parseMoney(request.amount())));
+                parseMoney(request.amount()), request.toAmount() != null ? parseMoney(request.toAmount()) : null));
         return query.findById(owner, id).map(TransactionController::toResponse)
                 .orElseThrow(() -> new IllegalStateException("transaction vanished after recording: " + id.value()));
     }
@@ -85,6 +85,7 @@ class TransactionController {
         List<PostingResponse> postings = view.postings().stream()
                 .map(p -> new PostingResponse(p.accountId(), p.side(), new MoneyDto(p.amount().toPlainString(), p.currency())))
                 .toList();
-        return new TransactionResponse(view.id(), view.date(), postings);
+        String rate = view.exchangeRate() != null ? view.exchangeRate().toPlainString() : null;
+        return new TransactionResponse(view.id(), view.date(), rate, postings);
     }
 }

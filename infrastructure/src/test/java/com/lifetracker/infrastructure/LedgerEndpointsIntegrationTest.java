@@ -109,14 +109,35 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void rejects_a_cross_currency_movement() throws Exception {
+    void a_cross_currency_movement_without_the_second_amount_is_422() throws Exception {
         String token = register("ledger-fx@example.com");
         String usd = createAccount(token, "USD Bank", "ASSET", "USD");
         String eur = createAccount(token, "EUR Bank", "ASSET", "EUR");
         mvc.perform(post("/transactions").header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON).content(movement("2026-07-02", usd, eur, "10.00", "USD")))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("CROSS_CURRENCY_UNSUPPORTED"));
+                .andExpect(jsonPath("$.code").value("CONVERTED_AMOUNT_REQUIRED"));
+    }
+
+    @Test
+    void records_a_cross_currency_movement_and_reports_the_derived_rate() throws Exception {
+        String token = register("ledger-fx2@example.com");
+        String usd = createAccount(token, "USD Bank", "ASSET", "USD");
+        String eur = createAccount(token, "EUR Bank", "ASSET", "EUR");
+        String body = "{\"date\":\"2026-07-02\",\"from\":\"" + usd + "\",\"to\":\"" + eur + "\","
+                + "\"amount\":{\"amount\":\"100.00\",\"currency\":\"USD\"},"
+                + "\"toAmount\":{\"amount\":\"90.00\",\"currency\":\"EUR\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.postings.length()").value(2))
+                .andExpect(jsonPath("$.exchangeRate").value("0.90000000"));
+
+        // The USD leg reads -100 (money left), the EUR account reads +90 (money arrived).
+        mvc.perform(get("/accounts/" + usd).header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.balance.amount").value("-100.0000"));
+        mvc.perform(get("/accounts/" + eur).header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.balance.amount").value("90.0000"));
     }
 
     @Test

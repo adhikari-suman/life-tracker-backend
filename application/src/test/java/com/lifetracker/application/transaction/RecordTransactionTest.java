@@ -46,7 +46,7 @@ class RecordTransactionTest {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
 
-        record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("50.00", USD)));
+        record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("50.00", USD), null));
 
         assertEquals(1, transactions.saved.size());
         List<Posting> postings = transactions.saved.get(0).postings();
@@ -55,32 +55,45 @@ class RecordTransactionTest {
     }
 
     @Test
+    void records_a_cross_currency_movement_with_both_real_amounts() {
+        AccountId usd = account("USD Bank", AccountKind.ASSET, USD);
+        AccountId eur = account("EUR Bank", AccountKind.ASSET, EUR);
+
+        record.execute(new RecordTransactionCommand(owner, DATE, usd, eur, money("100.00", USD), money("90.00", EUR)));
+
+        List<Posting> postings = transactions.saved.get(0).postings();
+        assertTrue(postings.contains(Posting.credit(usd, money("100.00", USD))));   // leaves USD
+        assertTrue(postings.contains(Posting.debit(eur, money("90.00", EUR))));      // arrives EUR
+        // The derived rate is asserted end-to-end in the HTTP integration test.
+    }
+
+    @Test
     void rejects_a_movement_to_the_same_account() {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         assertThrows(SameAccountException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, bank, money("10.00", USD))));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, bank, money("10.00", USD), null)));
     }
 
     @Test
     void rejects_a_reference_to_an_unknown_account() {
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
         assertThrows(UnknownAccountException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, AccountId.generate(), groceries, money("10.00", USD))));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, AccountId.generate(), groceries, money("10.00", USD), null)));
     }
 
     @Test
-    void rejects_a_cross_currency_movement() {
-        AccountId bank = account("Bank", AccountKind.ASSET, USD);
-        AccountId euro = account("Euro", AccountKind.ASSET, EUR);
-        assertThrows(CrossCurrencyUnsupportedException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, euro, money("10.00", USD))));
+    void rejects_a_cross_currency_movement_without_the_second_amount() {
+        AccountId usd = account("USD Bank", AccountKind.ASSET, USD);
+        AccountId eur = account("EUR Bank", AccountKind.ASSET, EUR);
+        assertThrows(ConvertedAmountRequiredException.class,
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, usd, eur, money("10.00", USD), null)));
     }
 
     @Test
-    void rejects_an_amount_in_a_different_currency_than_the_accounts() {
+    void rejects_an_amount_not_in_the_source_accounts_currency() {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
         assertThrows(CurrencyMismatchException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("10.00", EUR))));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("10.00", EUR), null)));
     }
 }

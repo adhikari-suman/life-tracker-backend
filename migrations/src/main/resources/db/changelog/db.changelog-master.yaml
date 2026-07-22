@@ -29,3 +29,6 @@ databaseChangeLog:
   - include:
       file: changes/008-create-transactions.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/009-add-transaction-exchange-rate.yaml
+      relativeToChangelogFile: true
