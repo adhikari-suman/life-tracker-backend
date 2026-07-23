@@ -12,10 +12,20 @@ import com.lifetracker.application.user.InvalidCredentialsException;
 import com.lifetracker.application.user.InvalidTokenException;
 import com.lifetracker.application.user.TooManyAttemptsException;
 import com.lifetracker.application.account.InvalidAccountException;
+import com.lifetracker.application.labeling.LabelArchivedException;
+import com.lifetracker.application.labeling.LabelNotApplicableException;
+import com.lifetracker.application.labeling.LabelNotFoundException;
+import com.lifetracker.application.labeling.PostingNotFoundException;
 import com.lifetracker.application.transaction.ConvertedAmountRequiredException;
 import com.lifetracker.application.transaction.SameAccountException;
 import com.lifetracker.application.transaction.UnknownAccountException;
 import com.lifetracker.domain.account.InvalidAccountNameException;
+import com.lifetracker.domain.labeling.DuplicateLabelNameException;
+import com.lifetracker.domain.labeling.InvalidLabelNameException;
+import com.lifetracker.domain.labeling.LabelCycleException;
+import com.lifetracker.domain.labeling.LabelDepthExceededException;
+import com.lifetracker.domain.labeling.LabelHasChildrenException;
+import com.lifetracker.domain.labeling.LabelInUseException;
 import com.lifetracker.domain.money.CurrencyMismatchException;
 import com.lifetracker.domain.money.ExcessScaleException;
 import com.lifetracker.domain.money.NegativeAmountException;
@@ -25,6 +35,7 @@ import com.lifetracker.domain.user.WeakPasswordException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -75,6 +86,17 @@ class ApiExceptionHandler {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION", "Request body is invalid.");
     }
 
+    // A body that cannot be read as its schema: malformed JSON, or a field the schema forbids
+    // (additionalProperties: false, enforced by spring.jackson.deserialization.fail-on-unknown-properties).
+    // 400, not the 422 a parsed-but-invalid body gets: this body cannot be accepted AS WRITTEN. The
+    // detail is deliberately generic -- it never echoes the offending field back, to avoid reflecting
+    // caller input, and it collapses "malformed" and "unknown field" into one answer on purpose.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ProblemDetail unreadableBody(HttpMessageNotReadableException e) {
+        return problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
+                "The request body could not be read, or contains a field the schema does not allow.");
+    }
+
     @ExceptionHandler(SessionNotFoundException.class)
     ProblemDetail sessionNotFound(SessionNotFoundException e) {
         return problem(HttpStatus.NOT_FOUND, "SESSION_NOT_FOUND", "Session not found.");
@@ -109,7 +131,8 @@ class ApiExceptionHandler {
 
     @ExceptionHandler({InvalidAccountException.class, InvalidAccountNameException.class,
             UnbalancedTransactionException.class, CurrencyMismatchException.class,
-            NegativeAmountException.class, ExcessScaleException.class, MalformedMoneyException.class})
+            NegativeAmountException.class, ExcessScaleException.class, MalformedMoneyException.class,
+            InvalidLabelNameException.class})
     ProblemDetail ledgerValidation(RuntimeException e) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION", e.getMessage());
     }
@@ -138,6 +161,55 @@ class ApiExceptionHandler {
     @ExceptionHandler(TransactionNotFoundException.class)
     ProblemDetail transactionNotFound(TransactionNotFoundException e) {
         return problem(HttpStatus.NOT_FOUND, "TRANSACTION_NOT_FOUND", "Transaction not found.");
+    }
+
+    // ---------- Labels (ADR-0014, ADR-0015) ----------
+
+    @ExceptionHandler(LabelNotFoundException.class)
+    ProblemDetail labelNotFound(LabelNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "LABEL_NOT_FOUND", "Label not found.");
+    }
+
+    @ExceptionHandler(PostingNotFoundException.class)
+    ProblemDetail postingNotFound(PostingNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "POSTING_NOT_FOUND", "Posting not found.");
+    }
+
+    @ExceptionHandler(LabelNotApplicableException.class)
+    ProblemDetail labelNotApplicable(LabelNotApplicableException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "LABEL_NOT_APPLICABLE", e.getMessage());
+    }
+
+    @ExceptionHandler(LabelArchivedException.class)
+    ProblemDetail labelArchived(LabelArchivedException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "LABEL_ARCHIVED", e.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateLabelNameException.class)
+    ProblemDetail duplicateLabelName(DuplicateLabelNameException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "LABEL_NAME_TAKEN", e.getMessage());
+    }
+
+    @ExceptionHandler(LabelDepthExceededException.class)
+    ProblemDetail labelTooDeep(LabelDepthExceededException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "LABEL_DEPTH_EXCEEDED", e.getMessage());
+    }
+
+    @ExceptionHandler(LabelCycleException.class)
+    ProblemDetail labelCycle(LabelCycleException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "LABEL_CYCLE", e.getMessage());
+    }
+
+    // 409 rather than 422: the request is well-formed and the label is real -- it is the current state
+    // of the Book that refuses, and the caller can resolve it (archive, or retag) and try again.
+    @ExceptionHandler(LabelInUseException.class)
+    ProblemDetail labelInUse(LabelInUseException e) {
+        return problem(HttpStatus.CONFLICT, "LABEL_IN_USE", e.getMessage());
+    }
+
+    @ExceptionHandler(LabelHasChildrenException.class)
+    ProblemDetail labelHasChildren(LabelHasChildrenException e) {
+        return problem(HttpStatus.CONFLICT, "LABEL_HAS_CHILDREN", e.getMessage());
     }
 
     private static ProblemDetail problem(HttpStatus status, String code, String detail) {

@@ -173,4 +173,17 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/accounts")).andExpect(status().isUnauthorized());
         mvc.perform(post("/transactions")).andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void a_body_with_an_unknown_field_is_rejected_not_silently_dropped() throws Exception {
+        String token = register("strict-body@example.com");
+        // 'colour' is not in CreateAccountRequest. The spec's additionalProperties:false says reject a
+        // typo, never drop it -- a dropped field compiles, sends, and does nothing. (Global rule; any
+        // request body would do -- accounts just has the handiest harness here.)
+        String body = "{\"name\":\"Bank\",\"kind\":\"ASSET\",\"currency\":\"USD\",\"colour\":\"blue\"}";
+        mvc.perform(post("/accounts").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
 }

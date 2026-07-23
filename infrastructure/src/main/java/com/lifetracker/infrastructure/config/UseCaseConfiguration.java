@@ -15,7 +15,15 @@ import com.lifetracker.application.user.RequestPasswordReset;
 import com.lifetracker.application.user.ResetPassword;
 import com.lifetracker.application.user.SendEmailVerification;
 import com.lifetracker.application.user.VerifyEmail;
+import com.lifetracker.application.labeling.AssignPostingLabel;
+import com.lifetracker.application.labeling.ClearPostingLabel;
+import com.lifetracker.application.labeling.CreateLabel;
+import com.lifetracker.application.labeling.DeleteLabel;
+import com.lifetracker.application.labeling.UpdateLabel;
 import com.lifetracker.application.transaction.RecordTransaction;
+import com.lifetracker.domain.labeling.LabelRepository;
+import com.lifetracker.domain.labeling.PostingKinds;
+import com.lifetracker.domain.labeling.PostingLabelRepository;
 import com.lifetracker.domain.account.AccountRepository;
 import com.lifetracker.domain.notification.EmailSender;
 import com.lifetracker.domain.session.AccessTokens;
@@ -60,8 +68,35 @@ class UseCaseConfiguration {
     }
 
     @Bean
-    RecordTransaction recordTransaction(AccountRepository accounts, TransactionRepository transactions) {
-        return new RecordTransaction(accounts, transactions);
+    RecordTransaction recordTransaction(AccountRepository accounts, TransactionRepository transactions,
+                                        LabelRepository labels, PostingLabelRepository postingLabels) {
+        return new RecordTransaction(accounts, transactions, labels, postingLabels);
+    }
+
+    @Bean
+    CreateLabel createLabel(LabelRepository labels) {
+        return new CreateLabel(labels);
+    }
+
+    @Bean
+    UpdateLabel updateLabel(LabelRepository labels) {
+        return new UpdateLabel(labels);
+    }
+
+    @Bean
+    DeleteLabel deleteLabel(LabelRepository labels, PostingLabelRepository postingLabels) {
+        return new DeleteLabel(labels, postingLabels);
+    }
+
+    @Bean
+    AssignPostingLabel assignPostingLabel(LabelRepository labels, PostingLabelRepository postingLabels,
+                                          PostingKinds postingKinds) {
+        return new AssignPostingLabel(labels, postingLabels, postingKinds);
+    }
+
+    @Bean
+    ClearPostingLabel clearPostingLabel(PostingLabelRepository postingLabels, PostingKinds postingKinds) {
+        return new ClearPostingLabel(postingLabels, postingKinds);
     }
 
     @Bean

@@ -2,10 +2,12 @@ package com.lifetracker.infrastructure.web;
 
 import com.lifetracker.domain.ledger.OwnerId;
 import com.lifetracker.infrastructure.persistence.report.AccountAmountView;
+import com.lifetracker.infrastructure.persistence.report.LabelAmountView;
 import com.lifetracker.infrastructure.persistence.report.ReportQueryService;
 import com.lifetracker.infrastructure.web.dto.AccountAmountResponse;
 import com.lifetracker.infrastructure.web.dto.ActivityReportResponse;
 import com.lifetracker.infrastructure.web.dto.CurrencyAmountResponse;
+import com.lifetracker.infrastructure.web.dto.LabelAmountResponse;
 import com.lifetracker.infrastructure.web.dto.CurrencyNetWorthResponse;
 import com.lifetracker.infrastructure.web.dto.MoneyDto;
 import com.lifetracker.infrastructure.web.dto.NetWorthResponse;
@@ -53,7 +55,7 @@ class ReportController {
                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
-        return activityReport(from, to, reports.spending(owner, from, to));
+        return activityReport(from, to, reports.spending(owner, from, to), reports.spendingByLabel(owner, from, to));
     }
 
     @GetMapping("/income")
@@ -61,12 +63,24 @@ class ReportController {
                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
-        return activityReport(from, to, reports.income(owner, from, to));
+        return activityReport(from, to, reports.income(owner, from, to), reports.incomeByLabel(owner, from, to));
     }
 
-    private static ActivityReportResponse activityReport(LocalDate from, LocalDate to, List<AccountAmountView> byAccount) {
+    /**
+     * The same money twice: {@code byAccount} is where it was booked, {@code byLabel} what it was for.
+     * Totals are summed from {@code byAccount}, and summing every {@code byLabel} row's {@code own}
+     * must give the identical per-currency figure — the check that catches a roll-up bug.
+     */
+    private static ActivityReportResponse activityReport(LocalDate from, LocalDate to,
+                                                         List<AccountAmountView> byAccount,
+                                                         List<LabelAmountView> byLabel) {
         List<AccountAmountResponse> accounts = byAccount.stream()
                 .map(v -> new AccountAmountResponse(v.accountId(), v.name(), v.currency(), money(v.amount(), v.currency())))
+                .toList();
+
+        List<LabelAmountResponse> labels = byLabel.stream()
+                .map(v -> new LabelAmountResponse(v.labelId(), v.name(), v.path(), v.parentLabelId(), v.currency(),
+                        money(v.own(), v.currency()), money(v.rolledUp(), v.currency())))
                 .toList();
 
         Map<String, BigDecimal> totalByCurrency = new LinkedHashMap<>();
@@ -77,7 +91,7 @@ class ReportController {
                 .map(e -> new CurrencyAmountResponse(e.getKey(), money(e.getValue(), e.getKey())))
                 .toList();
 
-        return new ActivityReportResponse(from, to, accounts, totals);
+        return new ActivityReportResponse(from, to, accounts, labels, totals);
     }
 
     private static MoneyDto money(BigDecimal amount, String currency) {

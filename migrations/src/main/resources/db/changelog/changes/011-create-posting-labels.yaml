@@ -1,0 +1,58 @@
+# Hand-written to match PostingLabelEntity (code-first, ADR-0009). The metadata satellite that
+# attaches a label to a posting from OUTSIDE the ledger core (ADR-0014) — which is what lets a posting
+# be retagged at any age without the append-only ledger being rewritten.
+#
+# posting_id is the PRIMARY KEY, not just a foreign key: that is what makes "a posting carries at most
+# one label" structural rather than a rule someone has to remember. label_id has no ON DELETE clause
+# (RESTRICT), so the database itself refuses to delete a label that is still in use, backing the
+# application's rule instead of merely trusting it. Grants to lifetracker_app deferred.
+databaseChangeLog:
+  - changeSet:
+      id: 011-create-posting-labels
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: posting_labels
+            columns:
+              - column:
+                  name: posting_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_posting_labels
+                    nullable: false
+              - column:
+                  name: label_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_posting_labels_posting
+            baseTableName: posting_labels
+            baseColumnNames: posting_id
+            referencedTableName: postings
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_posting_labels_label
+            baseTableName: posting_labels
+            baseColumnNames: label_id
+            referencedTableName: labels
+            referencedColumnNames: id
+        # (owner_id, label_id) serves the "is this label still in use?" check that blocks a delete.
+        - createIndex:
+            indexName: idx_posting_labels_owner_label
+            tableName: posting_labels
+            columns:
+              - column:
+                  name: owner_id
+              - column:
+                  name: label_id
+      rollback:
+        - dropTable:
+            tableName: posting_labels

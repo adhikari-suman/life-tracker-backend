@@ -32,3 +32,9 @@ databaseChangeLog:
   - include:
       file: changes/009-add-transaction-exchange-rate.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/010-create-labels.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/011-create-posting-labels.yaml
+      relativeToChangelogFile: true

@@ -1,0 +1,86 @@
+# Hand-written to match LabelEntity (code-first, ADR-0009). The categorization tree (ADR-0014):
+# what money was FOR, held beside the ledger rather than inside it. Owner-scoped by owner_id stamped
+# at the boundary (ADR-0006). parent_id is null for a root and self-references; deleting a parent is
+# refused (no ON DELETE clause = RESTRICT), which backs the application's "childless only" rule.
+# Grants to lifetracker_app deferred, as in every changeset so far.
+databaseChangeLog:
+  - changeSet:
+      id: 010-create-labels
+      author: adhikari-suman
+      changes:
+        - createTable:
+            tableName: labels
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_labels
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parent_id
+                  type: uuid
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_labels_parent
+            baseTableName: labels
+            baseColumnNames: parent_id
+            referencedTableName: labels
+            referencedColumnNames: id
+        - createIndex:
+            indexName: idx_labels_owner
+            tableName: labels
+            columns:
+              - column:
+                  name: owner_id
+        - createIndex:
+            indexName: idx_labels_parent
+            tableName: labels
+            columns:
+              - column:
+                  name: parent_id
+  # Sibling names are unique case-insensitively. This needs TWO partial indexes, not one constraint:
+  # in Postgres a NULL is never equal to another NULL, so a plain
+  # UNIQUE (owner_id, parent_id, lower(name)) would happily accept two ROOT labels both called
+  # 'food'. The failure is silent, which is exactly why it is split out and commented here.
+  - changeSet:
+      id: 010-labels-sibling-name-unique
+      author: adhikari-suman
+      changes:
+        - sql:
+            sql: >-
+              create unique index uq_labels_child_name
+              on labels (owner_id, parent_id, lower(name))
+              where parent_id is not null
+        - sql:
+            sql: >-
+              create unique index uq_labels_root_name
+              on labels (owner_id, lower(name))
+              where parent_id is null
+      rollback:
+        - sql:
+            sql: drop index if exists uq_labels_child_name
+        - sql:
+            sql: drop index if exists uq_labels_root_name

@@ -44,10 +44,15 @@ final class TransactionMapper {
         return debit.amount().amount().divide(credit.amount().amount(), 8, RoundingMode.HALF_UP);
     }
 
+    /**
+     * The posting's id comes from the domain, not from here: a label is keyed by it (ADR-0014), so the
+     * use case must know it at the moment it records the movement rather than discovering it after a
+     * round trip to the database.
+     */
     static List<PostingEntity> toPostingEntities(Transaction transaction) {
         return transaction.postings().stream()
                 .map(posting -> new PostingEntity(
-                        UUID.randomUUID(),
+                        posting.id().value(),
                         transaction.id().value(),
                         posting.accountId().value(),
                         posting.side().name(),

@@ -110,8 +110,25 @@ _Avoid_: store, outlet, location
 
 **Label**:
 A user-defined tag on a posting that says what the money was for, so you can summarize your
-own spending however you like — `fuel`, `groceries`, `fast food`, `salary`. Labels form a
-parent-child tree (`food` → `fast food`), only a few levels deep, with no cycles. A label
-rolls up into its ancestors, so tagging a posting `fast food` also counts it toward `food` in
-any summary. Labels are the whole of categorization; accounts do not categorize.
-_Avoid_: category, tag, type
+own spending however you like — `fuel`, `groceries`, `fast food`, `salary`. A posting carries
+at most one, and only a posting recording money entering or leaving your world can carry one
+at all: an internal transfer, a payment, an opening balance has nothing to categorize and so
+takes none. Tagging is optional — what is left untagged is Uncategorized, not wrong. Labels
+form a parent-child tree (`food` → `fast food`), at most three levels deep, with no cycles,
+and any of them may be used directly — tag a posting `food` when you don't know or don't care
+which kind. A label rolls up into its ancestors, so tagging a posting `fast food` also counts
+it toward `food` in any summary; the roll-up follows the tree as it stands now, so
+reorganizing the tree reorganizes every summary, past months included. A label may be renamed,
+moved, or retired from use without disturbing what it was already applied to, and what a
+posting is tagged with can be changed at any time however old it is — a label describes money,
+it never moves it. Labels are the whole of categorization; accounts do not categorize.
+_Avoid_: category, tag, type — a label says what the money was *for*, never what kind of
+transaction it was; "internal transfer", "opening balance" and "credit-card payment" are facts
+about the accounts a transaction touches, not labels
+
+**Uncategorized**:
+Where money with no label lands in a summary — not a label anyone creates or applies, but the
+name for what remains once every labelled posting has been counted. It exists so a summary
+always accounts for everything: the labelled parts plus Uncategorized are the whole. It cannot
+be renamed, nested, or tagged onto anything, and it vanishes the moment you tag what was in it.
+_Avoid_: unlabelled, misc, other (those are labels you might create; this is the absence of one)
