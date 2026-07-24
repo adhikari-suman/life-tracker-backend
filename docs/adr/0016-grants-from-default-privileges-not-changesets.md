@@ -19,9 +19,11 @@ append-only, so those eleven can never gain the `GRANT` the rule asks for. Adher
 from changeset 012 onward would have produced a schema where grants exist for later tables and
 not earlier ones, which is worse than either extreme.
 
-The roles are created by the local stack's Postgres init script, so this is currently exercised
-only in development. That is still one more place than before: the Testcontainers boot connects
-as a superuser, which needs no grant and therefore never proved anything about them.
+The same init script creates the roles in both places that run a database: the compose stack and
+the Testcontainers boot. The tests connect Liquibase as the migrator and the application as the
+app role, so a missing privilege fails the suite. Connecting the tests as a superuser — which is
+what they did before — meant no permission check could ever fail, and an entity needing a
+privilege the app role lacks would have passed every test and failed in production.
 
 ## Considered options
 

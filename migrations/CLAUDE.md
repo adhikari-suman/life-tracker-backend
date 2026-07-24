@@ -35,9 +35,11 @@ Master is an index. Never put a changeset in it.
 - `lifetracker_app` — DML only. `REVOKE CREATE ON SCHEMA public`. The application cannot
   ALTER a table even if Hibernate wanted to.
 
-Both are created by `docker/postgres/init/01-roles.sh`, which runs once against an empty data
-directory. That script is also where the default privileges live. It is a development stack;
-Testcontainers still connects as a superuser, so the split is exercised locally and nowhere else.
+Both are created by `docker/postgres/init/01-roles.sh`, which also holds the default privileges.
+That one script is used in both places: the compose stack mounts it, and the Testcontainers boot
+mounts the same file, so the tests prove the script rather than a second copy of it. Liquibase
+connects as the migrator and the application as the app role in tests too — a missing privilege
+fails the suite instead of production.
 
 ## The drift check is the point
 
