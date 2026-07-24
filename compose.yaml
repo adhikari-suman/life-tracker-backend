@@ -1,6 +1,13 @@
-# The local stack: Postgres, a one-shot keypair generator, the migration job, and the app.
+# The local stack. Two modes, because backend work is normally done with the app on the host:
 #
-#   docker compose up --build
+#   docker compose up -d                          dependencies only — Postgres, keypair, migrations
+#   SPRING_PROFILES_ACTIVE=local ./gradlew :infrastructure:bootRun
+#
+#   docker compose --profile full up -d --build   everything, including the app in a container
+#
+# The default is dependencies-only on purpose. Iterating on Java through the image costs a cold
+# Gradle run per change, where `bootRun` is a couple of seconds — and a containerised app would
+# hold port 8080, which the host app wants. Use `--profile full` to exercise the real image.
 #
 # This is a DEVELOPMENT stack. The credentials below are local-only literals and are meant to be
 # in the repository; the JWT keypair is not, and is generated into a gitignored directory.
@@ -99,6 +106,9 @@ services:
   # ALTER a table even if Hibernate wanted to.
   # -------------------------------------------------------------------------------------------
   app:
+    # Opt-in. Bare `docker compose up` brings up this service's dependencies and stops there, so
+    # the host app has 8080 to itself. `--profile full` includes this one.
+    profiles: ["full"]
     build:
       context: .
       dockerfile: infrastructure/Dockerfile

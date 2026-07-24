@@ -26,9 +26,19 @@ dependencies {
 	liquibaseRuntime(libs.picocli)
 }
 
+// Liquibase resolves `changelogFile` against the JVM's working directory, which for `./gradlew`
+// is the ROOT project — so the relative path below found nothing and the task failed from
+// anywhere but this module's own directory. A search path fixes that WITHOUT making the path
+// absolute, which matters: Liquibase stores the changelog path in DATABASECHANGELOG.FILENAME as
+// part of a changeset's identity. Keeping it the relative form is what lets this task and the
+// migration image (which sets LIQUIBASE_SEARCH_PATH to the same effect) apply the same changesets
+// to the same database without either one re-running the other's work.
+val changelogSearchPath = layout.projectDirectory.asFile.path
+
 liquibase {
 	activities.register("main") {
 		this.arguments = mapOf(
+			"searchPath" to changelogSearchPath,
 			"changelogFile" to "src/main/resources/db/changelog/db.changelog-master.yaml",
 			// These mirror the anchors in compose.yaml — one file is YAML and one is Kotlin, so
 			// they cannot share a definition. They defaulted to the `postgres` superuser, which
