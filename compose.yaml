@@ -1,13 +1,15 @@
 # The local stack. Two modes, because backend work is normally done with the app on the host:
 #
-#   docker compose up -d                          dependencies only — Postgres, keypair, migrations
+#   docker compose up -d                           dependencies only — Postgres, keypair, migrations
 #   SPRING_PROFILES_ACTIVE=local ./gradlew :infrastructure:bootRun
 #
-#   docker compose --profile full up -d --build   everything, including the app in a container
+#   docker compose up -d --build --scale app=1     everything, including the app in a container
+#
+#   docker compose down                            tears down all of it, either way
 #
 # The default is dependencies-only on purpose. Iterating on Java through the image costs a cold
 # Gradle run per change, where `bootRun` is a couple of seconds — and a containerised app would
-# hold port 8080, which the host app wants. Use `--profile full` to exercise the real image.
+# hold port 8080, which the host app wants. Scale it up to exercise the real image.
 #
 # This is a DEVELOPMENT stack. The credentials below are local-only literals and are meant to be
 # in the repository; the JWT keypair is not, and is generated into a gitignored directory.
@@ -106,9 +108,16 @@ services:
   # ALTER a table even if Hibernate wanted to.
   # -------------------------------------------------------------------------------------------
   app:
-    # Opt-in. Bare `docker compose up` brings up this service's dependencies and stops there, so
-    # the host app has 8080 to itself. `--profile full` includes this one.
-    profiles: ["full"]
+    # Defined but not started: `docker compose up` brings up this service's dependencies and stops
+    # there, so the host app has 8080 to itself. `--scale app=1` starts it.
+    #
+    # Deliberately NOT a profile, which is the more obvious way to write this. A service in an
+    # inactive profile is invisible to `docker compose down` — it survives the teardown, and the
+    # network removal then fails with "resource is still in use", leaving the project half up.
+    # `--remove-orphans` does not catch it either. Zero replicas keeps `app` in the active
+    # configuration, so it is never started by accident and always torn down.
+    deploy:
+      replicas: 0
     build:
       context: .
       dockerfile: infrastructure/Dockerfile

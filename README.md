@@ -30,14 +30,16 @@ The API is on `http://localhost:8080/v1`. Postgres is published on 5432, so `psq
 ### Everything in Docker
 
 ```sh
-docker compose --profile full up -d --build
+docker compose up -d --build --scale app=1
 ```
 
 Adds the app as a container, built from `infrastructure/Dockerfile`. Use it to exercise the real
 image — the layered build, the non-root user, the healthcheck — not to iterate on Java.
 
-**Stopping it needs the profile too:** `docker compose down` only touches services in active
-profiles, so it leaves a running `app` behind. Use `docker compose --profile full down`.
+`docker compose down` tears down everything in either mode. The `app` service is held at zero
+replicas rather than put behind a profile precisely so that stays true: a service in an inactive
+profile survives `down` — including `down --remove-orphans` — and the network removal then fails
+with "resource is still in use", leaving the project half up.
 
 ## What the stack is
 
@@ -46,7 +48,7 @@ profiles, so it leaves a running `app` behind. Use `docker compose --profile ful
 | `db` | `postgres:18-alpine` | same tag the tests pin; creates both roles on first start |
 | `keygen` | `alpine/openssl` | writes a 3072-bit RS256 keypair to `.secrets/` if absent |
 | `migrate` | built from `migrations/` | Liquibase 4.33.0; runs to completion before the app |
-| `app` | built from `infrastructure/` | profile `full` only; 8080 published, 8081 (health) not |
+| `app` | built from `infrastructure/` | zero replicas by default; 8080 published, 8081 (health) not |
 
 `.secrets/` is gitignored and per-machine. It is generated once and reused, so restarting does not
 invalidate anyone's tokens. Delete it and the next `up` makes a new pair.
