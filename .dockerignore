@@ -1,0 +1,28 @@
+# Keep the build context small and, more importantly, keep host build output from leaking into
+# the image — a stale local build/ directory copied into the builder is exactly the stale-artifact
+# bug the multi-stage build exists to avoid.
+.git
+.gitignore
+.gitattributes
+.gradle
+build/
+**/build/
+**/.gradle
+
+# The generated JWT keypair. Never in an image.
+.secrets/
+
+# Editor and OS noise
+.idea
+.vscode
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Documentation is not needed to compile anything. NOTE: gradle/ is deliberately NOT ignored —
+# it holds the wrapper and libs.versions.toml, without which the build cannot resolve a thing.
+docs/
+*.md
+compose.yaml
+docker/

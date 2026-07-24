@@ -16,8 +16,9 @@ completion before the app starts, and does nothing else.
 - Every changeset gets a `rollback` block. Liquibase infers some (`createTable`); write it
   explicitly where it cannot (`sql`, `dropColumn`).
 - No `ddl-auto` anywhere, ever. Hibernate validates; it never writes.
-- Grants for a new table go in the SAME changeset that creates it. A table the app cannot
-  read is a production incident, not a test failure.
+- NEVER write a `GRANT` in a changeset. `lifetracker_app` gets its DML from `ALTER DEFAULT
+  PRIVILEGES`, set once when the database is created, so every table the migrator creates is
+  granted automatically and no changeset can forget one (ADR-0016).
 
 ## Layout
 
@@ -33,6 +34,10 @@ Master is an index. Never put a changeset in it.
 - `lifetracker_migrator` — owns the schema, has DDL. Only the migration job uses it.
 - `lifetracker_app` — DML only. `REVOKE CREATE ON SCHEMA public`. The application cannot
   ALTER a table even if Hibernate wanted to.
+
+Both are created by `docker/postgres/init/01-roles.sh`, which runs once against an empty data
+directory. That script is also where the default privileges live. It is a development stack;
+Testcontainers still connects as a superuser, so the split is exercised locally and nowhere else.
 
 ## The drift check is the point
 

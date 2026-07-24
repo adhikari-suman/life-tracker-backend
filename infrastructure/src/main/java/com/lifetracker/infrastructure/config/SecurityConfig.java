@@ -1,7 +1,9 @@
 package com.lifetracker.infrastructure.config;
 
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,7 +22,29 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 class SecurityConfig {
 
+    /**
+     * The health endpoint, open. Actuator runs in the management context on its own port
+     * ({@code management.server.port}), but a separate port is NOT a separate filter chain — Boot
+     * propagates this configuration to the management context, so without this the chain below
+     * answers 401 to the container's own healthcheck.
+     * <p>
+     * Scoped to the health endpoint by id rather than {@code toAnyEndpoint()}, so exposing a
+     * second endpoint later does not silently make it public too. This cannot widen the API
+     * surface: the management port serves no business endpoint, and 8080 maps nothing under
+     * {@code /actuator}.
+     */
     @Bean
+    @Order(1)
+    SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher(EndpointRequest.to("health"))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .csrf(csrf -> csrf.disable())
+                .build();
+    }
+
+    @Bean
+    @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())

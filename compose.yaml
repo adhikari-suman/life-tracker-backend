@@ -1,0 +1,132 @@
+# The local stack: Postgres, a one-shot keypair generator, the migration job, and the app.
+#
+#   docker compose up --build
+#
+# This is a DEVELOPMENT stack. The credentials below are local-only literals and are meant to be
+# in the repository; the JWT keypair is not, and is generated into a gitignored directory.
+
+# ---------------------------------------------------------------------------------------------
+# The one place these values are written. Everything below refers to them.
+# ---------------------------------------------------------------------------------------------
+x-db-name: &db-name lifetracker
+x-jdbc-url: &jdbc-url jdbc:postgresql://db:5432/lifetracker
+
+x-migrator-user: &migrator-user lifetracker_migrator
+x-migrator-password: &migrator-password migrator-local-only
+
+x-app-user: &app-user lifetracker_app
+x-app-password: &app-password app-local-only
+
+services:
+  # -------------------------------------------------------------------------------------------
+  # Postgres. Pinned to the same tag as TestcontainersConfiguration, so the database you develop
+  # against is the database the integration tests prove against.
+  # -------------------------------------------------------------------------------------------
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: *db-name
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # Read by the init script, which cannot see YAML anchors of its own.
+      MIGRATOR_USER: *migrator-user
+      MIGRATOR_PASSWORD: *migrator-password
+      APP_USER: *app-user
+      APP_PASSWORD: *app-password
+    volumes:
+      # /var/lib/postgresql, NOT /var/lib/postgresql/data. From Postgres 18 the image keeps data
+      # in a major-version subdirectory (/var/lib/postgresql/18/docker) so that `pg_upgrade
+      # --link` can work across a single mount point. Mounting the old path makes the image refuse
+      # to start, reporting the volume as unused.
+      - db-data:/var/lib/postgresql
+      # Runs once, on an empty data directory. Delete the volume to re-run it.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Published so you can psql from the host. Nothing else needs it.
+      - "5432:5432"
+    healthcheck:
+      # $$ escapes compose interpolation, so the container's own shell expands these.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # -------------------------------------------------------------------------------------------
+  # The RS256 keypair (ADR-0007: 3072-bit). Generated once into a gitignored directory and
+  # reused, so restarting the stack does not invalidate access tokens.
+  #
+  # This lives in compose, not in the app's entrypoint, on purpose: an application that mints its
+  # own signing key is exactly what you never want in production. The image reads a key from a
+  # path — locally that path is a bind mount, in a deployment it is whatever supplies secrets.
+  # -------------------------------------------------------------------------------------------
+  keygen:
+    image: alpine/openssl:latest
+    volumes:
+      - ./.secrets:/keys
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        if [ -f /keys/jwt-private.pem ]; then
+          echo "keypair present, leaving it alone"
+          exit 0
+        fi
+        # PKCS#8 "BEGIN PRIVATE KEY" and X.509 "BEGIN PUBLIC KEY" — the two formats
+        # JwtConfiguration.pemToDer parses.
+        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out /keys/jwt-private.pem
+        openssl rsa -pubout -in /keys/jwt-private.pem -out /keys/jwt-public.pem
+        # World-readable so the app's unprivileged user can read it through the bind mount. This
+        # is a throwaway development key; a deployment would mount a real secret 0400.
+        chmod 0644 /keys/jwt-private.pem /keys/jwt-public.pem
+        echo "generated a 3072-bit RS256 keypair"
+
+  # -------------------------------------------------------------------------------------------
+  # Migrations (ADR-0009). Runs to completion, as lifetracker_migrator — the only role with DDL.
+  # -------------------------------------------------------------------------------------------
+  migrate:
+    build:
+      context: ./migrations
+    environment:
+      LIQUIBASE_COMMAND_URL: *jdbc-url
+      LIQUIBASE_COMMAND_USERNAME: *migrator-user
+      LIQUIBASE_COMMAND_PASSWORD: *migrator-password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------------------------
+  # The application, as lifetracker_app — SELECT/INSERT/UPDATE/DELETE and nothing more. It cannot
+  # ALTER a table even if Hibernate wanted to.
+  # -------------------------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile
+    environment:
+      DB_URL: *jdbc-url
+      DB_USERNAME: *app-user
+      DB_PASSWORD: *app-password
+    ports:
+      # 8080 only. 8081 (management) stays on the compose network — the healthcheck below runs
+      # inside the container and reaches it over localhost.
+      - "8080:8080"
+    volumes:
+      - ./.secrets:/keys:ro
+    depends_on:
+      # Structural, not by convention: the app cannot start against an unmigrated database, and
+      # cannot start without a keypair.
+      migrate:
+        condition: service_completed_successfully
+      keygen:
+        condition: service_completed_successfully
+    healthcheck:
+      # busybox wget, present in the alpine JRE base. Readiness rather than liveness: it goes UP
+      # only once the app is actually serving.
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  db-data:
