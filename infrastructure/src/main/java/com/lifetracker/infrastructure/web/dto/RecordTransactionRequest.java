@@ -1,5 +1,8 @@
 package com.lifetracker.infrastructure.web.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.NotNull;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -16,7 +19,18 @@ import java.util.UUID;
  * <p>{@code labelId} is optional and names no posting: the server attaches it to whichever leg is the
  * Income or Expense account, since that is the only leg with a "what was this for" to answer
  * (ADR-0014).
+ *
+ * <p>The five required fields carry {@code @NotNull} so an omitted one is answered with 422
+ * VALIDATION rather than reaching the use case as a null. The spec's {@code required} list is
+ * [date, time, from, to, amount]; {@code toAmount} and {@code labelId} are genuinely optional.
+ *
+ * <p>{@code time} is pinned to {@code HH:mm} rather than left to Jackson's ISO default, which
+ * accepts and emits seconds. The spec constrains it with
+ * {@code pattern: ^([01][0-9]|2[0-3]):[0-5][0-9]$} in BOTH directions, so a trailing {@code :00}
+ * is off-contract even though it parses cleanly.
  */
-public record RecordTransactionRequest(LocalDate date, LocalTime time, UUID from, UUID to,
-                                       MoneyDto amount, MoneyDto toAmount, UUID labelId) {
+public record RecordTransactionRequest(@NotNull LocalDate date,
+                                       @NotNull @JsonFormat(pattern = "HH:mm") LocalTime time,
+                                       @NotNull UUID from, @NotNull UUID to,
+                                       @NotNull MoneyDto amount, MoneyDto toAmount, UUID labelId) {
 }

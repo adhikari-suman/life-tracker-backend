@@ -98,6 +98,84 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.postings[*].direction", containsInAnyOrder("CREDIT", "DEBIT")));
     }
 
+    // ADR-0018. The spec constrains `time` with pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ in BOTH
+    // directions, and marks it required. Jackson's ISO default for a LocalTime does neither: it
+    // emits 19:42:00, and an omitted field arrives as a null that used to reach the use case and
+    // NPE into a 500. Both are pinned here because both were live defects against a green suite.
+    @Test
+    void a_transaction_time_is_HH_mm_on_the_way_out_never_with_seconds() throws Exception {
+        String token = register("ledger-time-format@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        String body = "{\"date\":\"2026-07-02\",\"time\":\"19:42\",\"from\":\"" + bank + "\",\"to\":\"" + groceries
+                + "\",\"amount\":{\"amount\":\"12.50\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.time").value("19:42"));
+
+        mvc.perform(get("/transactions").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$[0].time").value("19:42"));
+    }
+
+    @Test
+    void a_movement_without_a_time_is_422_not_500() throws Exception {
+        String token = register("ledger-time-missing@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        // The body parses; it just omits a required field. 400 is reserved for a body that cannot
+        // be read AS WRITTEN (malformed JSON, or a field the schema forbids).
+        String body = "{\"date\":\"2026-07-02\",\"from\":\"" + bank + "\",\"to\":\"" + groceries
+                + "\",\"amount\":{\"amount\":\"12.50\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION"));
+    }
+
+    @Test
+    void a_time_carrying_an_offset_is_refused() throws Exception {
+        String token = register("ledger-time-offset@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        // An offset is precisely what Occurred At must not carry — accepting one would let a
+        // late-evening purchase drift into the next day and change which month it reports in.
+        String body = "{\"date\":\"2026-07-02\",\"time\":\"19:42:00+05:00\",\"from\":\"" + bank + "\",\"to\":\""
+                + groceries + "\",\"amount\":{\"amount\":\"12.50\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void within_a_day_the_list_is_ordered_by_time_descending() throws Exception {
+        String token = register("ledger-time-order@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        // Recorded out of order on purpose: the list must read in the order things HAPPENED, not
+        // the order they were typed (ADR-0018), so created_at is a tiebreak and nothing more.
+        at(token, "2026-07-02", "08:15", bank, groceries, "3.20");
+        at(token, "2026-07-02", "22:05", bank, groceries, "9.99");
+        at(token, "2026-07-02", "19:42", bank, groceries, "12.50");
+
+        mvc.perform(get("/transactions").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$[0].time").value("22:05"))
+                .andExpect(jsonPath("$[1].time").value("19:42"))
+                .andExpect(jsonPath("$[2].time").value("08:15"));
+    }
+
+    private void at(String token, String date, String time, String from, String to, String amount) throws Exception {
+        String body = "{\"date\":\"" + date + "\",\"time\":\"" + time + "\",\"from\":\"" + from + "\",\"to\":\"" + to
+                + "\",\"amount\":{\"amount\":\"" + amount + "\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+    }
+
     @Test
     void rejects_a_movement_to_the_same_account() throws Exception {
         String token = register("ledger-same@example.com");
