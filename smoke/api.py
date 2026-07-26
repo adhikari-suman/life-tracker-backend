@@ -207,6 +207,32 @@ st, _ = call("POST", "/transactions",
               "amount": {"amount": "1.00", "currency": "USD"}, "nonsense": 1}, token=tok)
 check("an undeclared field -> 400 (strict bodies)", 400, st)
 
+# ------------------------------------------------------------- required fields, everywhere
+section("a missing required field is 422 VALIDATION on EVERY endpoint")
+# The spec states this as a BLANKET rule, so it has to hold across the surface, not just where
+# someone remembered @Valid. It did not: /accounts, /labels and the posting-label sub-resource
+# each 500'd on a null that reached the domain, while /accounts missing `kind` happened to answer
+# 422 because the enum failed to deserialize — the same client mistake getting different answers
+# depending on which field it landed on.
+for label, method, path, body in [
+    ("POST /accounts without name", "POST", "/accounts", {"kind": "ASSET", "currency": "USD"}),
+    ("POST /accounts without kind", "POST", "/accounts", {"name": "X", "currency": "USD"}),
+    ("POST /accounts without currency", "POST", "/accounts", {"name": "X", "kind": "ASSET"}),
+    ("POST /labels without name", "POST", "/labels", {}),
+    ("PUT  /postings/{id}/label without labelId", "PUT",
+     f"/postings/{'0'*8}-0000-4000-8000-{'0'*12}/label", {}),
+]:
+    st, problem = call(method, path, body, token=tok)
+    check(f"{label} -> 422", 422, st)
+
+# Two operations document their OWN answer and are deliberate, not oversights: a credential that
+# is absent is as invalid as one that is malformed, and password reset must not vary its response
+# by whether the address exists.
+check("verify-email without a token -> 400 INVALID_TOKEN (documented)", 400,
+      call("POST", "/auth/verify-email", {})[0])
+check("password-reset without an email -> 202 (never enumerates)", 202,
+      call("POST", "/auth/password-reset", {})[0])
+
 # -------------------------------------------------------------------------------- labels
 section("labels — the tree (ADR-0015)")
 

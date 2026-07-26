@@ -8,11 +8,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -263,5 +265,40 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
+
+    // The companion to the rule above, and a BLANKET one: a body that parses and only then omits a
+    // required field is 422 VALIDATION. It has to hold across the surface rather than wherever
+    // someone remembered @Valid, which is exactly how it failed -- each of these 500'd on a null
+    // reaching the domain, while /accounts missing `kind` answered 422 purely because the enum
+    // failed to deserialize. Same client mistake, three different answers.
+    @Test
+    void a_missing_required_field_is_422_on_every_body() throws Exception {
+        String token = register("required-fields@example.com");
+
+        record Case(String path, String body) { }
+        var cases = List.of(
+                new Case("/accounts", "{\"kind\":\"ASSET\",\"currency\":\"USD\"}"),
+                new Case("/accounts", "{\"name\":\"Bank\",\"currency\":\"USD\"}"),
+                new Case("/accounts", "{\"name\":\"Bank\",\"kind\":\"ASSET\"}"),
+                new Case("/labels", "{}"));
+
+        for (Case c : cases) {
+            mvc.perform(post(c.path()).header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON).content(c.body()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("VALIDATION"));
+        }
+    }
+
+    @Test
+    void setting_a_posting_label_with_no_labelId_is_422() throws Exception {
+        String token = register("posting-label-required@example.com");
+        // Clearing a label is DELETE on this sub-resource, so a PUT of nothing is malformed rather
+        // than a quiet way to ask for removal.
+        mvc.perform(put("/postings/{id}/label", UUID.randomUUID()).header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION"));
     }
 }
