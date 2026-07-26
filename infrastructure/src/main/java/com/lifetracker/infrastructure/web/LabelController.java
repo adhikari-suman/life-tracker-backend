@@ -13,6 +13,7 @@ import com.lifetracker.infrastructure.persistence.labeling.LabelView;
 import com.lifetracker.infrastructure.web.dto.CreateLabelRequest;
 import com.lifetracker.infrastructure.web.dto.LabelResponse;
 import com.lifetracker.infrastructure.web.dto.UpdateLabelRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -53,7 +54,7 @@ class LabelController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    LabelResponse create(@AuthenticationPrincipal Jwt jwt, @RequestBody CreateLabelRequest request) {
+    LabelResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateLabelRequest request) {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
         LabelId id = createLabel.execute(new CreateLabelCommand(owner, request.name(), request.parentId()));
         return readBack(owner, id);

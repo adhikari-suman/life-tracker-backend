@@ -12,6 +12,7 @@ import com.lifetracker.infrastructure.web.dto.MoneyDto;
 import com.lifetracker.infrastructure.web.dto.PostingResponse;
 import com.lifetracker.infrastructure.web.dto.RecordTransactionRequest;
 import com.lifetracker.infrastructure.web.dto.TransactionResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -47,7 +48,7 @@ class TransactionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    TransactionResponse record(@AuthenticationPrincipal Jwt jwt, @RequestBody RecordTransactionRequest request) {
+    TransactionResponse record(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody RecordTransactionRequest request) {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
         TransactionId id = recordTransaction.execute(new RecordTransactionCommand(
                 owner, request.date(), request.time(), AccountId.of(request.from()), AccountId.of(request.to()),

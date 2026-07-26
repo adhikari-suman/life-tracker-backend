@@ -9,6 +9,7 @@ import com.lifetracker.infrastructure.persistence.account.AccountView;
 import com.lifetracker.infrastructure.web.dto.AccountResponse;
 import com.lifetracker.infrastructure.web.dto.CreateAccountRequest;
 import com.lifetracker.infrastructure.web.dto.MoneyDto;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -41,7 +42,7 @@ class AccountController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    AccountResponse create(@AuthenticationPrincipal Jwt jwt, @RequestBody CreateAccountRequest request) {
+    AccountResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateAccountRequest request) {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
         AccountId id = openAccount.execute(
                 new OpenAccountCommand(owner, request.name(), request.kind(), request.currency()));
