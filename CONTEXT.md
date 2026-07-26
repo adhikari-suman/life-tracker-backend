@@ -15,6 +15,24 @@ recording — one payslip, one shop, one transfer is one transaction, however ma
 takes to balance.
 _Avoid_: entry, record, movement, purchase (a purchase is just one kind of transaction)
 
+**Occurred At**:
+When the money actually moved — the date on the receipt and the time on the clock beside it.
+Read as a **wall clock**, never as an instant: 19:42 means 19:42 where you were standing, is
+never converted into another zone, and so a late-evening purchase can never drift into the next
+day. The date is what every summary groups by and the only part reporting consults; the time
+orders a day and does nothing else. It is supplied by whoever records the transaction, not
+observed by the system.
+_Avoid_: timestamp, datetime (both name an instant on a universal clock, which this deliberately
+is not), transaction date (that is only half of it)
+
+**Recorded At**:
+When a transaction was entered into the ledger, as against when the money moved. An audit fact
+the ledger keeps for itself: it breaks ties in ordering and is never the answer to "when did this
+happen". A transaction entered on Friday about Tuesday *occurred* on Tuesday and was *recorded*
+on Friday, and collapsing the two is the mistake this pair of terms exists to prevent.
+_Avoid_: created (it invites the created/updated/deleted trio, and this ledger has neither of the
+other two — see the append-only note under Refund; the only correction is a reversing entry)
+
 **Posting**:
 One line of a transaction: an amount posted to a single account as either a debit or a
 credit, carrying one label that says what the money was for. A transaction has two or more

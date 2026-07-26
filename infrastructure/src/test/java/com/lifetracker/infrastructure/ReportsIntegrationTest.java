@@ -44,7 +44,7 @@ class ReportsIntegrationTest extends AbstractIntegrationTest {
     }
 
     private void move(String token, String date, String from, String to, String amount) throws Exception {
-        String body = "{\"date\":\"" + date + "\",\"from\":\"" + from + "\",\"to\":\"" + to + "\","
+        String body = "{\"date\":\"" + date + "\",\"time\":\"12:00\",\"from\":\"" + from + "\",\"to\":\"" + to + "\","
                 + "\"amount\":{\"amount\":\"" + amount + "\",\"currency\":\"USD\"}}";
         mvc.perform(post("/transactions").header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON).content(body))

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Currency;
 import java.util.List;
 
@@ -16,6 +17,7 @@ class TransactionTest {
 
     private static final Currency USD = Currency.getInstance("USD");
     private static final LocalDate DATE = LocalDate.of(2026, 7, 21);
+    private static final LocalTime TIME = LocalTime.of(19, 42);
 
     private final AccountId bank = AccountId.generate();
     private final AccountId groceries = AccountId.generate();
@@ -26,7 +28,7 @@ class TransactionTest {
 
     @Test
     void a_balanced_movement_is_recorded() {
-        assertDoesNotThrow(() -> Transaction.record(TransactionId.generate(), DATE, List.of(
+        assertDoesNotThrow(() -> Transaction.record(TransactionId.generate(), DATE, TIME, List.of(
                 Posting.credit(bank, usd("50.00")),
                 Posting.debit(groceries, usd("50.00")))));
     }
@@ -34,7 +36,7 @@ class TransactionTest {
     @Test
     void unequal_debits_and_credits_are_rejected() {
         assertThrows(UnbalancedTransactionException.class,
-                () -> Transaction.record(TransactionId.generate(), DATE, List.of(
+                () -> Transaction.record(TransactionId.generate(), DATE, TIME, List.of(
                         Posting.credit(bank, usd("50.00")),
                         Posting.debit(groceries, usd("40.00")))));
     }
@@ -42,7 +44,7 @@ class TransactionTest {
     @Test
     void fewer_than_two_postings_is_rejected() {
         assertThrows(UnbalancedTransactionException.class,
-                () -> Transaction.record(TransactionId.generate(), DATE, List.of(
+                () -> Transaction.record(TransactionId.generate(), DATE, TIME, List.of(
                         Posting.credit(bank, usd("50.00")))));
     }
 
@@ -53,7 +55,7 @@ class TransactionTest {
         AccountId f1 = AccountId.generate();
         AccountId f2 = AccountId.generate();
         AccountId f3 = AccountId.generate();
-        assertDoesNotThrow(() -> Transaction.record(TransactionId.generate(), DATE, List.of(
+        assertDoesNotThrow(() -> Transaction.record(TransactionId.generate(), DATE, TIME, List.of(
                 Posting.credit(bank, usd("80.00")),
                 Posting.debit(food, usd("20.00")),
                 Posting.debit(f1, usd("20.00")),

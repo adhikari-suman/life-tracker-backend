@@ -48,7 +48,7 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     private static String movement(String date, String from, String to, String amount, String currency) {
-        return "{\"date\":\"" + date + "\",\"from\":\"" + from + "\",\"to\":\"" + to + "\","
+        return "{\"date\":\"" + date + "\",\"time\":\"12:00\",\"from\":\"" + from + "\",\"to\":\"" + to + "\","
                 + "\"amount\":{\"amount\":\"" + amount + "\",\"currency\":\"" + currency + "\"}}";
     }
 
@@ -124,7 +124,7 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
         String token = register("ledger-fx2@example.com");
         String usd = createAccount(token, "USD Bank", "ASSET", "USD");
         String eur = createAccount(token, "EUR Bank", "ASSET", "EUR");
-        String body = "{\"date\":\"2026-07-02\",\"from\":\"" + usd + "\",\"to\":\"" + eur + "\","
+        String body = "{\"date\":\"2026-07-02\",\"time\":\"12:00\",\"from\":\"" + usd + "\",\"to\":\"" + eur + "\","
                 + "\"amount\":{\"amount\":\"100.00\",\"currency\":\"USD\"},"
                 + "\"toAmount\":{\"amount\":\"90.00\",\"currency\":\"EUR\"}}";
         mvc.perform(post("/transactions").header("Authorization", bearer(token))

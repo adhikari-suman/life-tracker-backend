@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Currency;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +98,7 @@ class LabelReportingIntegrationTest extends AbstractIntegrationTest {
 
     private void spendOn(LocalDate date, OwnerId owner, AccountId from, AccountId to, String amount,
                          Currency currency, LabelId label) {
-        recordTransaction.execute(new RecordTransactionCommand(owner, date, from, to, money(amount, currency), null,
+        recordTransaction.execute(new RecordTransactionCommand(owner, date, LocalTime.of(12, 0), from, to, money(amount, currency), null,
                 label == null ? null : label.value()));
     }
 

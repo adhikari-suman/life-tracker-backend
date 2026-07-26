@@ -1,0 +1,47 @@
+# Adds the wall-clock time a transaction happened, beside its date (ADR-0018). Zoneless `time`,
+# never `timetz`: an offset is precisely what this value must not carry, because converting it
+# could move a late-evening purchase into the next day and change which month it reports in.
+# Matches the tx_time column on TransactionEntity.
+#
+# Three steps, in this order, because the column is NOT NULL and rows already exist:
+#
+#   1. add it nullable, so the ALTER succeeds against a populated table
+#   2. backfill from created_at
+#   3. only then enforce NOT NULL
+#
+# The backfill is the honest part to read twice. created_at is *Recorded At* -- when the row was
+# typed -- and this writes it into *Occurred At*, which claims it is when the money moved. For rows
+# that predate this feature nobody knows the real answer, and ADR-0018 records the decision to take
+# a real-but-wrong moment over an invented one: midnight would be equally untrue and would also
+# sort every old transaction to the head of its day. The ledger is append-only, so this cannot
+# later be corrected -- only reversed.
+#
+# created_at is timestamptz, so ::time yields its UTC wall clock rather than the recorder's. That
+# is accepted for the same reason: these rows never had a trustworthy time to preserve.
+databaseChangeLog:
+  - changeSet:
+      id: 012-add-transaction-time
+      author: adhikari-suman
+      changes:
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column:
+                  name: tx_time
+                  type: time
+
+        - update:
+            tableName: transactions
+            columns:
+              - column:
+                  name: tx_time
+                  valueComputed: created_at::time
+
+        - addNotNullConstraint:
+            tableName: transactions
+            columnName: tx_time
+            columnDataType: time
+      rollback:
+        - dropColumn:
+            tableName: transactions
+            columnName: tx_time

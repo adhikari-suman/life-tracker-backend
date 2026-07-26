@@ -18,7 +18,7 @@ final class TransactionMapper {
 
     static TransactionEntity toEntity(OwnerId owner, Transaction transaction) {
         return new TransactionEntity(transaction.id().value(), owner.value(), transaction.date(),
-                deriveExchangeRate(transaction));
+                transaction.time(), deriveExchangeRate(transaction));
     }
 
     /**

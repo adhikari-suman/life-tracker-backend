@@ -4,6 +4,7 @@ import com.lifetracker.domain.ledger.EntrySide;
 import com.lifetracker.domain.money.Money;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Currency;
 import java.util.HashMap;
 import java.util.List;
@@ -23,11 +24,27 @@ public final class Transaction {
 
     private final TransactionId id;
     private final LocalDate date;
+
+    /**
+     * The wall-clock time the money moved — <em>Occurred At</em>, with {@link #date} (ADR-0018).
+     *
+     * <p>A {@link LocalTime} rather than an {@code OffsetTime} on purpose: an offset is exactly
+     * what this value must not carry. It is 19:42 where the person was standing, never converted,
+     * so no zone arithmetic can move a late-evening purchase into the next day and change which
+     * month it reports in. Only the date is ever grouped by; the time orders a day and nothing
+     * else.
+     *
+     * <p>It is supplied by whoever records the transaction, never observed here — the domain has
+     * no clock and asking one for "now" would invent a moment it cannot know.
+     */
+    private final LocalTime time;
+
     private final List<Posting> postings;
 
-    private Transaction(TransactionId id, LocalDate date, List<Posting> postings) {
+    private Transaction(TransactionId id, LocalDate date, LocalTime time, List<Posting> postings) {
         this.id = Objects.requireNonNull(id, "id");
         this.date = Objects.requireNonNull(date, "date");
+        this.time = Objects.requireNonNull(time, "time");
         Objects.requireNonNull(postings, "postings");
         if (postings.size() < 2) {
             throw new UnbalancedTransactionException("a transaction needs at least two postings");
@@ -37,13 +54,15 @@ public final class Transaction {
     }
 
     /** Record a new transaction, enforcing the balance invariant. */
-    public static Transaction record(TransactionId id, LocalDate date, List<Posting> postings) {
-        return new Transaction(id, date, postings);
+    public static Transaction record(
+            TransactionId id, LocalDate date, LocalTime time, List<Posting> postings) {
+        return new Transaction(id, date, time, postings);
     }
 
     /** Reconstitute from storage. For the persistence adapter, not business code. */
-    public static Transaction rehydrate(TransactionId id, LocalDate date, List<Posting> postings) {
-        return new Transaction(id, date, postings);
+    public static Transaction rehydrate(
+            TransactionId id, LocalDate date, LocalTime time, List<Posting> postings) {
+        return new Transaction(id, date, time, postings);
     }
 
     private static void requireBalancedPerCurrency(List<Posting> postings) {
@@ -69,6 +88,10 @@ public final class Transaction {
 
     public LocalDate date() {
         return date;
+    }
+
+    public LocalTime time() {
+        return time;
     }
 
     public List<Posting> postings() {

@@ -50,7 +50,7 @@ class TransactionController {
     TransactionResponse record(@AuthenticationPrincipal Jwt jwt, @RequestBody RecordTransactionRequest request) {
         OwnerId owner = AuthPrincipal.ownerId(jwt);
         TransactionId id = recordTransaction.execute(new RecordTransactionCommand(
-                owner, request.date(), AccountId.of(request.from()), AccountId.of(request.to()),
+                owner, request.date(), request.time(), AccountId.of(request.from()), AccountId.of(request.to()),
                 parseMoney(request.amount()), request.toAmount() != null ? parseMoney(request.toAmount()) : null,
                 request.labelId()));
         return query.findById(owner, id).map(TransactionController::toResponse)
@@ -88,6 +88,6 @@ class TransactionController {
                         new MoneyDto(p.amount().toPlainString(), p.currency()), p.labelId()))
                 .toList();
         String rate = view.exchangeRate() != null ? view.exchangeRate().toPlainString() : null;
-        return new TransactionResponse(view.id(), view.date(), rate, postings);
+        return new TransactionResponse(view.id(), view.date(), view.time(), rate, postings);
     }
 }

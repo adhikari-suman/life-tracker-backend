@@ -36,7 +36,7 @@ public class TransactionQueryService {
 
     public List<TransactionView> findByOwner(OwnerId owner, UUID accountFilter) {
         List<TransactionEntity> headers = accountFilter == null
-                ? transactions.findByOwnerIdOrderByDateDescCreatedAtDesc(owner.value())
+                ? transactions.findByOwnerIdOrderByDateDescTimeDescCreatedAtDesc(owner.value())
                 : transactions.findByOwnerAndAccount(owner.value(), accountFilter);
         if (headers.isEmpty()) {
             return List.of();
@@ -68,6 +68,7 @@ public class TransactionQueryService {
                 .map(p -> new PostingView(p.getId(), p.getAccountId(), p.getSide(), p.getAmount(), p.getCurrency(),
                         labels.get(p.getId())))
                 .toList();
-        return new TransactionView(header.getId(), header.getDate(), header.getExchangeRate(), views);
+        return new TransactionView(header.getId(), header.getDate(), header.getTime(),
+                header.getExchangeRate(), views);
     }
 }

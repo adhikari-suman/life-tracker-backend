@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +36,7 @@ class RecordTransactionTest {
     private static final Currency USD = Currency.getInstance("USD");
     private static final Currency EUR = Currency.getInstance("EUR");
     private static final LocalDate DATE = LocalDate.of(2026, 7, 21);
+    private static final LocalTime TIME = LocalTime.of(8, 15);
 
     private final InMemoryAccountRepository accounts = new InMemoryAccountRepository();
     private final InMemoryTransactionRepository transactions = new InMemoryTransactionRepository();
@@ -78,7 +80,7 @@ class RecordTransactionTest {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
 
-        record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("50.00", USD), null, null));
+        record.execute(new RecordTransactionCommand(owner, DATE, TIME, bank, groceries, money("50.00", USD), null, null));
 
         assertEquals(1, transactions.saved.size());
         List<Posting> postings = transactions.saved.get(0).postings();
@@ -91,7 +93,7 @@ class RecordTransactionTest {
         AccountId usd = account("USD Bank", AccountKind.ASSET, USD);
         AccountId eur = account("EUR Bank", AccountKind.ASSET, EUR);
 
-        record.execute(new RecordTransactionCommand(owner, DATE, usd, eur, money("100.00", USD), money("90.00", EUR), null));
+        record.execute(new RecordTransactionCommand(owner, DATE, TIME, usd, eur, money("100.00", USD), money("90.00", EUR), null));
 
         List<Posting> postings = transactions.saved.get(0).postings();
         assertTrue(hasLeg(postings, usd, EntrySide.CREDIT, money("100.00", USD)));   // leaves USD
@@ -103,14 +105,14 @@ class RecordTransactionTest {
     void rejects_a_movement_to_the_same_account() {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         assertThrows(SameAccountException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, bank, money("10.00", USD), null, null)));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, TIME, bank, bank, money("10.00", USD), null, null)));
     }
 
     @Test
     void rejects_a_reference_to_an_unknown_account() {
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
         assertThrows(UnknownAccountException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, AccountId.generate(), groceries, money("10.00", USD), null, null)));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, TIME, AccountId.generate(), groceries, money("10.00", USD), null, null)));
     }
 
     @Test
@@ -118,7 +120,7 @@ class RecordTransactionTest {
         AccountId usd = account("USD Bank", AccountKind.ASSET, USD);
         AccountId eur = account("EUR Bank", AccountKind.ASSET, EUR);
         assertThrows(ConvertedAmountRequiredException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, usd, eur, money("10.00", USD), null, null)));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, TIME, usd, eur, money("10.00", USD), null, null)));
     }
 
     @Test
@@ -126,7 +128,7 @@ class RecordTransactionTest {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
         assertThrows(CurrencyMismatchException.class,
-                () -> record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("10.00", EUR), null, null)));
+                () -> record.execute(new RecordTransactionCommand(owner, DATE, TIME, bank, groceries, money("10.00", EUR), null, null)));
     }
 
     // ---------- Labels (ADR-0014) ----------
@@ -137,7 +139,7 @@ class RecordTransactionTest {
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
         LabelId food = label("food");
 
-        record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("50.00", USD), null, food.value()));
+        record.execute(new RecordTransactionCommand(owner, DATE, TIME, bank, groceries, money("50.00", USD), null, food.value()));
 
         List<Posting> postings = transactions.saved.get(0).postings();
         Posting expenseLeg = leg(postings, groceries).orElseThrow();
@@ -154,7 +156,7 @@ class RecordTransactionTest {
         LabelId pay = label("salary");
 
         // Income is the `from` here -- the boundary leg is the credit, not the debit.
-        record.execute(new RecordTransactionCommand(owner, DATE, salary, bank, money("2000.00", USD), null, pay.value()));
+        record.execute(new RecordTransactionCommand(owner, DATE, TIME, salary, bank, money("2000.00", USD), null, pay.value()));
 
         List<Posting> postings = transactions.saved.get(0).postings();
         assertEquals(Optional.of(pay), postingLabels.findByPosting(owner, leg(postings, salary).orElseThrow().id()));
@@ -168,7 +170,7 @@ class RecordTransactionTest {
         LabelId food = label("food");
 
         assertThrows(LabelNotApplicableException.class, () -> record.execute(
-                new RecordTransactionCommand(owner, DATE, bank, cash, money("200.00", USD), null, food.value())));
+                new RecordTransactionCommand(owner, DATE, TIME, bank, cash, money("200.00", USD), null, food.value())));
         assertEquals(0, transactions.saved.size(), "a refused label must not leave the transaction recorded");
     }
 
@@ -179,7 +181,7 @@ class RecordTransactionTest {
         LabelId food = label("food");
 
         assertThrows(LabelNotApplicableException.class, () -> record.execute(
-                new RecordTransactionCommand(owner, DATE, bank, card, money("300.00", USD), null, food.value())));
+                new RecordTransactionCommand(owner, DATE, TIME, bank, card, money("300.00", USD), null, food.value())));
     }
 
     @Test
@@ -189,7 +191,7 @@ class RecordTransactionTest {
         LabelId food = label("food");
 
         assertThrows(LabelNotApplicableException.class, () -> record.execute(
-                new RecordTransactionCommand(owner, DATE, equity, bank, money("3000.00", USD), null, food.value())));
+                new RecordTransactionCommand(owner, DATE, TIME, equity, bank, money("3000.00", USD), null, food.value())));
     }
 
     @Test
@@ -200,7 +202,7 @@ class RecordTransactionTest {
 
         // Legal double-entry, but one label cannot say which of the two boundary legs it describes.
         assertThrows(LabelNotApplicableException.class, () -> record.execute(
-                new RecordTransactionCommand(owner, DATE, salary, fees, money("10.00", USD), null, food.value())));
+                new RecordTransactionCommand(owner, DATE, TIME, salary, fees, money("10.00", USD), null, food.value())));
     }
 
     @Test
@@ -209,12 +211,12 @@ class RecordTransactionTest {
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
 
         assertThrows(LabelNotFoundException.class, () -> record.execute(new RecordTransactionCommand(
-                owner, DATE, bank, groceries, money("5.00", USD), null, UUID.randomUUID())));
+                owner, DATE, TIME, bank, groceries, money("5.00", USD), null, UUID.randomUUID())));
 
         Label retired = Label.root(LabelId.generate(), new LabelName("wedding")).archivedLabel();
         labels.save(owner, retired);
         assertThrows(LabelArchivedException.class, () -> record.execute(new RecordTransactionCommand(
-                owner, DATE, bank, groceries, money("5.00", USD), null, retired.id().value())));
+                owner, DATE, TIME, bank, groceries, money("5.00", USD), null, retired.id().value())));
     }
 
     @Test
@@ -222,7 +224,7 @@ class RecordTransactionTest {
         AccountId bank = account("Bank", AccountKind.ASSET, USD);
         AccountId groceries = account("Groceries", AccountKind.EXPENSE, USD);
 
-        record.execute(new RecordTransactionCommand(owner, DATE, bank, groceries, money("4.00", USD), null, null));
+        record.execute(new RecordTransactionCommand(owner, DATE, TIME, bank, groceries, money("4.00", USD), null, null));
 
         assertEquals(1, transactions.saved.size());
         assertEquals(0, postingLabels.size(), "no label means uncategorized, not an error");
