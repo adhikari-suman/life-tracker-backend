@@ -3,7 +3,11 @@
 
 allprojects {
 	group = "com.lifetracker"
-	version = "0.0.1-SNAPSHOT"
+	// Tracks life-tracker-contracts' info.version, deliberately: the three repos ship as one
+	// product, and a reader asking "which contract does this build speak?" should not have to
+	// cross-reference two numbers. Nothing is published to a repository, so this is metadata —
+	// the Dockerfile globs infrastructure-*.jar rather than naming a version.
+	version = "0.8.2"
 }
 
 // Shared Java configuration for the JVM modules. Guarded on the Java plugin so the
