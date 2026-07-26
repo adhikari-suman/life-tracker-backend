@@ -54,6 +54,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Docker Hub times out from GitHub runners often enough that a single attempt makes this job
+      # flaky for reasons that have nothing to do with the code. Pull first, with retries, so a
+      # registry hiccup costs a retry instead of a red build somebody learns to ignore.
+      - name: pull base images (retrying past registry flakiness)
+        run: |
+          for image in postgres:18-alpine alpine/openssl liquibase/liquibase:4.33.0-alpine; do
+            for attempt in 1 2 3; do
+              docker pull "$image" && break
+              echo "pull of $image failed (attempt $attempt/3), retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+              [ "$attempt" = 3 ] && { echo "::error::could not pull $image"; exit 1; }
+            done
+          done
+
       # Brings up postgres, generates the signing keypair, applies every migration to an EMPTY
       # database, and starts the app. Migrating from zero is itself worth having in CI: it is the
       # path a fresh environment takes and the one least often exercised locally.
