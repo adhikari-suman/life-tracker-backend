@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Currency;
 import java.util.Map;
 import java.util.UUID;
@@ -56,8 +57,8 @@ class LedgerPersistenceIntegrationTest extends AbstractIntegrationTest {
         AccountId groceries = openAccount.execute(new OpenAccountCommand(owner, "Groceries", "EXPENSE", "USD"));
 
         // Opening balance: $1000 from Equity into the bank. Then spend $50 from the bank.
-        recordTransaction.execute(new RecordTransactionCommand(owner, LocalDate.of(2026, 7, 1), equity, bank, usd("1000.00"), null, null));
-        recordTransaction.execute(new RecordTransactionCommand(owner, LocalDate.of(2026, 7, 2), bank, groceries, usd("50.00"), null, null));
+        recordTransaction.execute(new RecordTransactionCommand(owner, LocalDate.of(2026, 7, 1), LocalTime.of(9, 0), equity, bank, usd("1000.00"), null, null));
+        recordTransaction.execute(new RecordTransactionCommand(owner, LocalDate.of(2026, 7, 2), LocalTime.of(12, 30), bank, groceries, usd("50.00"), null, null));
 
         Map<UUID, BigDecimal> balances = accountQuery.findByOwner(owner).stream()
                 .collect(Collectors.toMap(AccountView::id, AccountView::balance));

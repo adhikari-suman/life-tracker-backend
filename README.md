@@ -83,6 +83,23 @@ Testcontainers Postgres, never H2. The suite runs the same two-role split as the
 missing grant fails here rather than in production — `DatabaseRolesIntegrationTest` asserts that
 directly, because every other test would still pass if the app connected as a superuser.
 
+### Smoke tests, against a running stack
+
+```sh
+docker compose up -d --build --scale app=1
+smoke/run.sh
+```
+
+Two suites ([`smoke/`](./smoke)) that exercise the assembled application over the wire: the whole
+HTTP surface against `life-tracker-contracts/openapi.yaml`, and the database against the two-role
+split and the ledger's stored-row invariants.
+
+They complement `./gradlew test` rather than repeat it. Nothing in Java reads `openapi.yaml`, so
+the Gradle suite structurally cannot catch the API drifting from the spec — and it didn't: both a
+`time` field serialized as `19:42:00` against the spec's `HH:mm` pattern, and a missing `time`
+NPE'ing into a 500 instead of a 422, were live while the whole suite was green. Both are pinned in
+`LedgerEndpointsIntegrationTest` now; the smoke suites are the net for the next one.
+
 ## Two things that will bite you
 
 **The API is served under `/v1`.** The application owns that prefix, not a gateway

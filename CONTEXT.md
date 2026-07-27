@@ -15,6 +15,24 @@ recording — one payslip, one shop, one transfer is one transaction, however ma
 takes to balance.
 _Avoid_: entry, record, movement, purchase (a purchase is just one kind of transaction)
 
+**Occurred At**:
+When the money actually moved — the date on the receipt and the time on the clock beside it.
+Read as a **wall clock**, never as an instant: 19:42 means 19:42 where you were standing, is
+never converted into another zone, and so a late-evening purchase can never drift into the next
+day. The date is what every summary groups by and the only part reporting consults; the time
+orders a day and does nothing else. It is asserted, not observed — a claim about when the money
+moved, which is why it can be wrong, and why Recorded At sits beside it.
+_Avoid_: timestamp, datetime (both name an instant on a universal clock, which this deliberately
+is not), transaction date (that is only half of it)
+
+**Recorded At**:
+When a transaction was entered into the ledger, as against when the money moved. An audit fact
+the ledger keeps for itself: it breaks ties in ordering and is never the answer to "when did this
+happen". A transaction entered on Friday about Tuesday *occurred* on Tuesday and was *recorded*
+on Friday, and collapsing the two is the mistake this pair of terms exists to prevent.
+_Avoid_: created (it invites the created/updated/deleted trio, and this ledger has neither of the
+other two — see the append-only note under Refund; the only correction is a reversing entry)
+
 **Posting**:
 One line of a transaction: an amount posted to a single account as either a debit or a
 credit, carrying one label that says what the money was for. A transaction has two or more
@@ -46,10 +64,11 @@ _Avoid_: bucket, wallet, ledger, category (a category is a label, not an account
 **Internal Transfer**:
 A transaction that moves your own money between two accounts you hold — Asset to Asset, like
 bank to cash — so nothing entered or left your world. It touches no Income or Expense account
-and therefore never counts as earning or spending. Marked with an `ITR` tag so it is trivial
-to filter out. Getting this right — not double-counting a moved £200 as both income and
-expense — is the core thing this ledger exists to fix, and the thing other apps get wrong.
-Paying down a debt is its Asset↔Liability cousin; see Payment.
+and therefore never counts as earning or spending. That it is a transfer follows from the
+accounts it touches, never from a tag — so no summary has to remember to exclude it. Getting
+this right — not double-counting a moved £200 as both income and expense — is the core thing
+this ledger exists to fix, and the thing other apps get wrong. Paying down a debt is its
+Asset↔Liability cousin; see Payment.
 _Avoid_: transfer (money crossing to someone else's account is not internal)
 
 **Payment**:

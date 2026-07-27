@@ -1,5 +1,9 @@
 # Classify every account by kind, so internal transfers are correct by construction
 
+> **Superseded in part by [ADR-0014](./0014-labels-as-posting-keyed-metadata.md).** The `ITR` tag
+> mentioned under Considered Options below was never built, and has since been rejected outright.
+> Account kinds remain the source of truth — the substance of this decision, and it still stands.
+
 Every account carries one of five kinds — Asset, Liability, Income, Expense, Equity. Asset
 and Liability are accounts the user owns (net worth); Income and Expense are the boundaries
 where money enters and leaves; Equity holds opening balances. We chose this because the whole

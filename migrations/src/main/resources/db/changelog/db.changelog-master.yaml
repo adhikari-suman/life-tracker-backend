@@ -38,3 +38,6 @@ databaseChangeLog:
   - include:
       file: changes/011-create-posting-labels.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/012-add-transaction-time.yaml
+      relativeToChangelogFile: true

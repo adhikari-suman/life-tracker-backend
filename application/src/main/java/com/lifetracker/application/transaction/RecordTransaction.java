@@ -83,7 +83,8 @@ public final class RecordTransaction {
         // Same-currency legs must be equal (the aggregate's balance check enforces it, and throws
         // UnbalancedTransactionException on a mismatch); cross-currency legs are balanced by the
         // derived rate and skip the equality check (ADR-0002).
-        Transaction transaction = Transaction.record(TransactionId.generate(), command.date(), List.of(credit, debit));
+        Transaction transaction = Transaction.record(
+                TransactionId.generate(), command.date(), command.time(), List.of(credit, debit));
         transactions.save(command.owner(), transaction);
 
         if (labelTarget != null) {

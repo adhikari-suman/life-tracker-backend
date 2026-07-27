@@ -5,6 +5,7 @@ import com.lifetracker.application.labeling.ClearPostingLabel;
 import com.lifetracker.domain.labeling.LabelId;
 import com.lifetracker.domain.transaction.PostingId;
 import com.lifetracker.infrastructure.web.dto.SetPostingLabelRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -41,7 +42,7 @@ class PostingLabelController {
     @PutMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void set(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID postingId,
-             @RequestBody SetPostingLabelRequest request) {
+             @Valid @RequestBody SetPostingLabelRequest request) {
         assignLabel.execute(AuthPrincipal.ownerId(jwt), PostingId.of(postingId), LabelId.of(request.labelId()));
     }
 

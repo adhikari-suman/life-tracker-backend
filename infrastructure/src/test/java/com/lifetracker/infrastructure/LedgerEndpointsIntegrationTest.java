@@ -8,11 +8,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -48,7 +50,7 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     private static String movement(String date, String from, String to, String amount, String currency) {
-        return "{\"date\":\"" + date + "\",\"from\":\"" + from + "\",\"to\":\"" + to + "\","
+        return "{\"date\":\"" + date + "\",\"time\":\"12:00\",\"from\":\"" + from + "\",\"to\":\"" + to + "\","
                 + "\"amount\":{\"amount\":\"" + amount + "\",\"currency\":\"" + currency + "\"}}";
     }
 
@@ -98,6 +100,84 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.postings[*].direction", containsInAnyOrder("CREDIT", "DEBIT")));
     }
 
+    // ADR-0018. The spec constrains `time` with pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ in BOTH
+    // directions, and marks it required. Jackson's ISO default for a LocalTime does neither: it
+    // emits 19:42:00, and an omitted field arrives as a null that used to reach the use case and
+    // NPE into a 500. Both are pinned here because both were live defects against a green suite.
+    @Test
+    void a_transaction_time_is_HH_mm_on_the_way_out_never_with_seconds() throws Exception {
+        String token = register("ledger-time-format@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        String body = "{\"date\":\"2026-07-02\",\"time\":\"19:42\",\"from\":\"" + bank + "\",\"to\":\"" + groceries
+                + "\",\"amount\":{\"amount\":\"12.50\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.time").value("19:42"));
+
+        mvc.perform(get("/transactions").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$[0].time").value("19:42"));
+    }
+
+    @Test
+    void a_movement_without_a_time_is_422_not_500() throws Exception {
+        String token = register("ledger-time-missing@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        // The body parses; it just omits a required field. 400 is reserved for a body that cannot
+        // be read AS WRITTEN (malformed JSON, or a field the schema forbids).
+        String body = "{\"date\":\"2026-07-02\",\"from\":\"" + bank + "\",\"to\":\"" + groceries
+                + "\",\"amount\":{\"amount\":\"12.50\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION"));
+    }
+
+    @Test
+    void a_time_carrying_an_offset_is_refused() throws Exception {
+        String token = register("ledger-time-offset@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        // An offset is precisely what Occurred At must not carry — accepting one would let a
+        // late-evening purchase drift into the next day and change which month it reports in.
+        String body = "{\"date\":\"2026-07-02\",\"time\":\"19:42:00+05:00\",\"from\":\"" + bank + "\",\"to\":\""
+                + groceries + "\",\"amount\":{\"amount\":\"12.50\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void within_a_day_the_list_is_ordered_by_time_descending() throws Exception {
+        String token = register("ledger-time-order@example.com");
+        String bank = createAccount(token, "Bank", "ASSET", "USD");
+        String groceries = createAccount(token, "Groceries", "EXPENSE", "USD");
+
+        // Recorded out of order on purpose: the list must read in the order things HAPPENED, not
+        // the order they were typed (ADR-0018), so created_at is a tiebreak and nothing more.
+        at(token, "2026-07-02", "08:15", bank, groceries, "3.20");
+        at(token, "2026-07-02", "22:05", bank, groceries, "9.99");
+        at(token, "2026-07-02", "19:42", bank, groceries, "12.50");
+
+        mvc.perform(get("/transactions").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$[0].time").value("22:05"))
+                .andExpect(jsonPath("$[1].time").value("19:42"))
+                .andExpect(jsonPath("$[2].time").value("08:15"));
+    }
+
+    private void at(String token, String date, String time, String from, String to, String amount) throws Exception {
+        String body = "{\"date\":\"" + date + "\",\"time\":\"" + time + "\",\"from\":\"" + from + "\",\"to\":\"" + to
+                + "\",\"amount\":{\"amount\":\"" + amount + "\",\"currency\":\"USD\"}}";
+        mvc.perform(post("/transactions").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+    }
+
     @Test
     void rejects_a_movement_to_the_same_account() throws Exception {
         String token = register("ledger-same@example.com");
@@ -124,7 +204,7 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
         String token = register("ledger-fx2@example.com");
         String usd = createAccount(token, "USD Bank", "ASSET", "USD");
         String eur = createAccount(token, "EUR Bank", "ASSET", "EUR");
-        String body = "{\"date\":\"2026-07-02\",\"from\":\"" + usd + "\",\"to\":\"" + eur + "\","
+        String body = "{\"date\":\"2026-07-02\",\"time\":\"12:00\",\"from\":\"" + usd + "\",\"to\":\"" + eur + "\","
                 + "\"amount\":{\"amount\":\"100.00\",\"currency\":\"USD\"},"
                 + "\"toAmount\":{\"amount\":\"90.00\",\"currency\":\"EUR\"}}";
         mvc.perform(post("/transactions").header("Authorization", bearer(token))
@@ -185,5 +265,40 @@ class LedgerEndpointsIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
+
+    // The companion to the rule above, and a BLANKET one: a body that parses and only then omits a
+    // required field is 422 VALIDATION. It has to hold across the surface rather than wherever
+    // someone remembered @Valid, which is exactly how it failed -- each of these 500'd on a null
+    // reaching the domain, while /accounts missing `kind` answered 422 purely because the enum
+    // failed to deserialize. Same client mistake, three different answers.
+    @Test
+    void a_missing_required_field_is_422_on_every_body() throws Exception {
+        String token = register("required-fields@example.com");
+
+        record Case(String path, String body) { }
+        var cases = List.of(
+                new Case("/accounts", "{\"kind\":\"ASSET\",\"currency\":\"USD\"}"),
+                new Case("/accounts", "{\"name\":\"Bank\",\"currency\":\"USD\"}"),
+                new Case("/accounts", "{\"name\":\"Bank\",\"kind\":\"ASSET\"}"),
+                new Case("/labels", "{}"));
+
+        for (Case c : cases) {
+            mvc.perform(post(c.path()).header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON).content(c.body()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("VALIDATION"));
+        }
+    }
+
+    @Test
+    void setting_a_posting_label_with_no_labelId_is_422() throws Exception {
+        String token = register("posting-label-required@example.com");
+        // Clearing a label is DELETE on this sub-resource, so a PUT of nothing is malformed rather
+        // than a quiet way to ask for removal.
+        mvc.perform(put("/postings/{id}/label", UUID.randomUUID()).header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION"));
     }
 }

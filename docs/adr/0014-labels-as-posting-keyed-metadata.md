@@ -32,6 +32,10 @@ append-only rule holds and a mis-tag is never permanent.
   tag would have to hang off the whole transaction, unlike every other label), and it duplicates a
   fact already derivable from account kinds, which can then drift out of sync with the accounts the
   transaction actually touches.
+
+  This supersedes the clause of [ADR-0001](./0001-account-kinds-for-correct-transfers.md) that left
+  a derived `ITR` tag standing "for easy filtering". Kinds remain the source of truth exactly as that
+  ADR argued — nothing stamps a tag from them. The rest of ADR-0001 stands.
 - **A label on the transaction rather than the posting.** Rejected: splits (ADR-0012) put several
   Expense legs under one transaction, each wanting its own category. A transaction-level label would
   have to be re-cut the moment splits land.
